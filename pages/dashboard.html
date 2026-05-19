@@ -1,43 +1,43 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard — IELTS Master</title>
-<link rel="stylesheet" href="../css/style.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../js/supabase-config.js"></script>
-<script src="../js/auth.js" defer></script>
-<script src="../js/data.js" defer></script>
-</head>
-<body>
-<header class="app-header" id="app-header"></header>
-<main class="app-main" id="main">
-  <div style="text-align:center;padding:80px 20px;color:var(--muted)">
-    <div style="font-size:32px;margin-bottom:12px">⏳</div>
-    <div>Loading dashboard…</div>
-  </div>
-</main>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Dashboard — IELTS Master</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-config.js"></script>
+    <script src="../js/auth.js" defer></script>
+    <script src="../js/data.js" defer></script>
+  </head>
+  <body>
+    <header class="app-header" id="app-header"></header>
+    <main class="app-main" id="main">
+      <div style="text-align: center; padding: 80px 20px; color: var(--muted)">
+        <div style="font-size: 32px; margin-bottom: 12px">⏳</div>
+        <div>Loading dashboard…</div>
+      </div>
+    </main>
 
-<script>
-document.addEventListener('DOMContentLoaded', async () => {
-  // Optional auth — if not logged in, show a guest landing instead of redirecting
-  const user = await Auth.initUserOptional();
-  renderHeader('dashboard.html');
+    <script>
+      document.addEventListener("DOMContentLoaded", async () => {
+        // Optional auth — if not logged in, show a guest landing instead of redirecting
+        const user = await Auth.initUserOptional();
+        renderHeader("dashboard.html");
 
-  if (!user) {
-    renderGuestDash();
-    return;
-  }
-  if (user.role === 'teacher') {
-    await renderTeacherDash(user);
-  } else {
-    await renderStudentDash(user);
-  }
-});
+        if (!user) {
+          renderGuestDash();
+          return;
+        }
+        if (user.role === "teacher") {
+          await renderTeacherDash(user);
+        } else {
+          await renderStudentDash(user);
+        }
+      });
 
-function renderGuestDash() {
-  document.getElementById('main').innerHTML = `
+      function renderGuestDash() {
+        document.getElementById("main").innerHTML = `
     <div style="max-width:600px;margin:80px auto;text-align:center;padding:0 20px">
       <div style="font-size:64px;margin-bottom:20px">📚</div>
       <h1 style="font-size:32px;font-weight:800;margin-bottom:12px">Welcome to IELTS Master</h1>
@@ -50,18 +50,18 @@ function renderGuestDash() {
         <a href="tests.html" class="btn btn-outline" style="padding:12px 32px;font-size:15px">Browse Tests</a>
       </div>
     </div>`;
-}
+      }
 
-async function renderStudentDash(user) {
-  const results = await DB.getUserResults(user.id);
-  const readingResults   = results.filter(r => r.type === 'reading');
-  const listeningResults = results.filter(r => r.type === 'listening');
-  const bestBand = results.length
-    ? Math.max(...results.map(r => bandScore(r.score, r.total)))
-    : null;
-  const firstName = (user.name || 'there').split(' ')[0];
+      async function renderStudentDash(user) {
+        const results = await DB.getUserResults(user.id);
+        const readingResults = results.filter((r) => r.type === "reading");
+        const listeningResults = results.filter((r) => r.type === "listening");
+        const bestBand = results.length
+          ? Math.max(...results.map((r) => bandScore(r.score, r.total)))
+          : null;
+        const firstName = (user.name || "there").split(" ")[0];
 
-  document.getElementById('main').innerHTML = `
+        document.getElementById("main").innerHTML = `
     <div class="page-title">Welcome back, ${firstName} 👋</div>
     <div class="page-sub">Your IELTS preparation overview</div>
 
@@ -78,7 +78,7 @@ async function renderStudentDash(user) {
       </div>
       <div class="stat-card">
         <div class="stat-icon icon-green">🏆</div>
-        <div class="stat-num">${bestBand !== null ? 'Band ' + bestBand : '—'}</div>
+        <div class="stat-num">${bestBand !== null ? "Band " + bestBand : "—"}</div>
         <div class="stat-label">Best Band Score</div>
       </div>
       <div class="stat-card">
@@ -93,51 +93,59 @@ async function renderStudentDash(user) {
         <h2>Recent Activity</h2>
         <a href="tests.html" class="btn btn-primary btn-sm">+ Take a Test</a>
       </div>
-      ${results.length === 0
-        ? `<div class="empty-state">
+      ${
+        results.length === 0
+          ? `<div class="empty-state">
             <div class="es-icon">📋</div>
             <h3>No tests yet</h3>
             <p>Start your first test to see your results here.</p>
             <a href="tests.html" class="btn btn-primary">Browse Tests</a>
            </div>`
-        : `<div class="table-wrap"><table>
+          : `<div class="table-wrap"><table>
             <thead><tr><th>Test</th><th>Type</th><th>Score</th><th>Band</th><th>Date</th><th></th></tr></thead>
             <tbody>
-            ${[...results].reverse().slice(0, 8).map((r, i) => {
-              const origIdx = results.length - 1 - i;
-              const band = bandScore(r.score, r.total);
-              const pct  = pctScore(r.score, r.total);
-              return `<tr>
+            ${[...results]
+              .reverse()
+              .slice(0, 8)
+              .map((r, i) => {
+                const origIdx = results.length - 1 - i;
+                const band = bandScore(r.score, r.total);
+                const pct = pctScore(r.score, r.total);
+                return `<tr>
                 <td style="font-weight:600">${r.test}</td>
-                <td><span class="badge ${r.type==='reading'?'badge-red':'badge-blue'}">${r.type==='reading'?'📖 Reading':'🎧 Listening'}</span></td>
+                <td><span class="badge ${r.type === "reading" ? "badge-red" : "badge-blue"}">${r.type === "reading" ? "📖 Reading" : "🎧 Listening"}</span></td>
                 <td>${r.score}/${r.total}</td>
                 <td style="font-weight:700;color:${bandColor(pct)}">Band ${band}</td>
                 <td style="color:var(--muted)">${r.date}</td>
                 <td><a href="result-detail.html?uid=${user.id}&idx=${origIdx}" class="btn btn-outline btn-sm">Details</a></td>
               </tr>`;
-            }).join('')}
+              })
+              .join("")}
             </tbody>
            </table></div>`
       }
     </div>`;
-}
+      }
 
-async function renderTeacherDash(user) {
-  // Fetch data in parallel
-  const [allUsers, allResults] = await Promise.all([
-    DB.getUsers(),
-    DB.getAllResults(),
-  ]);
+      async function renderTeacherDash(user) {
+        // Fetch data in parallel
+        const [allUsers, allResults] = await Promise.all([
+          DB.getUsers(),
+          DB.getAllResults(),
+        ]);
 
-  const students  = allUsers.filter(u => u.role === 'student');
-  const flat      = students.flatMap(s => allResults[s.id] || []);
-  const readingCt = flat.filter(r => r.type === 'reading').length;
-  const listenCt  = flat.filter(r => r.type === 'listening').length;
-  const avgBand   = flat.length
-    ? (flat.reduce((s, r) => s + bandScore(r.score, r.total), 0) / flat.length).toFixed(1)
-    : '—';
+        const students = allUsers.filter((u) => u.role === "student");
+        const flat = students.flatMap((s) => allResults[s.id] || []);
+        const readingCt = flat.filter((r) => r.type === "reading").length;
+        const listenCt = flat.filter((r) => r.type === "listening").length;
+        const avgBand = flat.length
+          ? (
+              flat.reduce((s, r) => s + bandScore(r.score, r.total), 0) /
+              flat.length
+            ).toFixed(1)
+          : "—";
 
-  document.getElementById('main').innerHTML = `
+        document.getElementById("main").innerHTML = `
     <div class="page-title">Teacher Dashboard 👩‍🏫</div>
     <div class="page-sub">Overview of all student activity</div>
 
@@ -145,7 +153,7 @@ async function renderTeacherDash(user) {
       <div class="stat-card"><div class="stat-icon icon-blue">👥</div><div class="stat-num">${students.length}</div><div class="stat-label">Total Students</div></div>
       <div class="stat-card"><div class="stat-icon icon-red">📖</div><div class="stat-num">${readingCt}</div><div class="stat-label">Reading Tests Taken</div></div>
       <div class="stat-card"><div class="stat-icon icon-blue">🎧</div><div class="stat-num">${listenCt}</div><div class="stat-label">Listening Tests Taken</div></div>
-      <div class="stat-card"><div class="stat-icon icon-green">📊</div><div class="stat-num">${avgBand !== '—' ? 'Band ' + avgBand : '—'}</div><div class="stat-label">Avg Band Score</div></div>
+      <div class="stat-card"><div class="stat-icon icon-green">📊</div><div class="stat-num">${avgBand !== "—" ? "Band " + avgBand : "—"}</div><div class="stat-label">Avg Band Score</div></div>
     </div>
 
     <div class="card">
@@ -153,28 +161,31 @@ async function renderTeacherDash(user) {
         <h2>Student Summary</h2>
         <a href="students.html" class="btn btn-primary btn-sm">View All</a>
       </div>
-      ${students.length === 0
-        ? `<div class="empty-state"><div class="es-icon">👥</div><h3>No students yet</h3><p>Students will appear here once they register.</p></div>`
-        : `<div class="table-wrap"><table>
+      ${
+        students.length === 0
+          ? `<div class="empty-state"><div class="es-icon">👥</div><h3>No students yet</h3><p>Students will appear here once they register.</p></div>`
+          : `<div class="table-wrap"><table>
             <thead><tr><th>Name</th><th>Email</th><th>Provider</th><th>Tests Done</th><th>Last Band</th><th></th></tr></thead>
             <tbody>
-            ${students.map(s => {
-              const res  = allResults[s.id] || [];
-              const last = res[res.length - 1];
-              return `<tr>
+            ${students
+              .map((s) => {
+                const res = allResults[s.id] || [];
+                const last = res[res.length - 1];
+                return `<tr>
                 <td><strong>${s.name}</strong></td>
                 <td style="color:var(--muted)">${s.email}</td>
-                <td><span class="badge ${s.provider==='google'?'badge-blue':'badge-gray'}">${s.provider==='google'?'🔑 Google':'✉️ Email'}</span></td>
+                <td><span class="badge ${s.provider === "google" ? "badge-blue" : "badge-gray"}">${s.provider === "google" ? "🔑 Google" : "✉️ Email"}</span></td>
                 <td><span class="badge badge-blue">${res.length}</span></td>
-                <td style="font-weight:700">${last ? 'Band ' + bandScore(last.score, last.total) : '—'}</td>
+                <td style="font-weight:700">${last ? "Band " + bandScore(last.score, last.total) : "—"}</td>
                 <td><a href="student-results.html?sid=${s.id}" class="btn btn-outline btn-sm">View Results</a></td>
               </tr>`;
-            }).join('')}
+              })
+              .join("")}
             </tbody>
            </table></div>`
       }
     </div>`;
-}
-</script>
-</body>
+      }
+    </script>
+  </body>
 </html>

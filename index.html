@@ -1,224 +1,231 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>IELTS Master — Sign In</title>
-<link rel="stylesheet" href="./css/style.css">
-<!-- CORRECT ORDER: supabase → config → auth → data → google -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./js/supabase-config.js"></script>
-<script src="./js/auth.js"></script>
-<script src="./js/data.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<style>
-body{background:linear-gradient(135deg,#1a1a2e 0%,#922B21 100%);display:flex;align-items:center;justify-content:center;min-height:100vh}
-.auth-card{background:#fff;border-radius:16px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
-.auth-brand{background:var(--red);color:#fff;padding:28px 36px;text-align:center}
-.auth-brand .brand-icon{width:52px;height:52px;background:rgba(255,255,255,.2);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
-.auth-brand h1{font-size:22px;font-weight:700;letter-spacing:1px;margin-bottom:4px}
-.auth-brand p{font-size:13px;opacity:.8}
-.auth-body{padding:28px 32px 32px}
-.auth-tabs{display:flex;background:#F3F4F6;border-radius:8px;padding:4px;margin-bottom:26px}
-.auth-tab{flex:1;padding:9px;border-radius:6px;border:none;background:none;cursor:pointer;font-size:14px;font-weight:600;font-family:inherit;color:var(--muted);transition:.2s}
-.auth-tab.active{background:#fff;color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.1)}
-.google-btn{width:100%;padding:12px;border:1.5px solid #4285F4;background:#fff;color:#3C4043;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:.2s;font-family:inherit}
-.google-btn:hover{background:#F8F9FA;border-color:#1a73e8}
-.google-btn svg{width:20px;height:20px;flex-shrink:0}
-.role-selector{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
-.role-option{border:2px solid var(--border);border-radius:8px;padding:14px 10px;text-align:center;cursor:pointer;transition:.2s}
-.role-option:hover{border-color:var(--red)}
-.role-option.selected{border-color:var(--red);background:var(--red-light)}
-.role-option .ro-icon{font-size:26px;margin-bottom:6px}
-.role-option .ro-label{font-size:13px;font-weight:700}
-.role-option .ro-sub{font-size:11px;color:var(--muted)}
-</style>
-</head>
-<body>
-<div class="auth-card">
-  <div class="auth-brand">
-    <div class="brand-icon">
-      <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-    </div>
-    <h1>IELTS MASTER</h1>
-    <p>Academic Test Practice Platform</p>
-  </div>
-  <div class="auth-body">
-    <div class="auth-tabs">
-      <button class="auth-tab active" onclick="switchTab('login')">Sign In</button>
-      <button class="auth-tab" onclick="switchTab('register')">Register</button>
-    </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>IELTS Master — Sign In</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./js/supabase-config.js"></script>
+    <script src="./js/auth.js"></script>
+    <script src="./js/data.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <link rel="stylesheet" href="./css/style.css" />
+    <style>
+      body { background:linear-gradient(135deg,#1a1a2e 0%,#922b21 100%); display:flex; align-items:center; justify-content:center; min-height:100vh; }
+      .auth-card { background:#fff; border-radius:16px; width:100%; max-width:460px; box-shadow:0 20px 60px rgba(0,0,0,.3); overflow:hidden; }
+      .auth-brand { background:var(--red); color:#fff; padding:28px 36px; text-align:center; }
+      .auth-brand .brand-icon { width:52px; height:52px; background:rgba(255,255,255,.2); border-radius:14px; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
+      .auth-brand h1 { font-size:22px; font-weight:700; letter-spacing:1px; margin-bottom:4px; }
+      .auth-brand p  { font-size:13px; opacity:.8; }
+      .auth-body { padding:28px 32px 32px; }
+      .auth-tabs { display:flex; background:#f3f4f6; border-radius:8px; padding:4px; margin-bottom:26px; }
+      .auth-tab  { flex:1; padding:9px; border-radius:6px; border:none; background:none; cursor:pointer; font-size:14px; font-weight:600; font-family:inherit; color:var(--muted); transition:.2s; }
+      .auth-tab.active { background:#fff; color:var(--text); box-shadow:0 1px 4px rgba(0,0,0,.1); }
+      .google-btn { width:100%; padding:12px; border:1.5px solid #4285f4; background:#fff; color:#3c4043; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; transition:.2s; font-family:inherit; }
+      .google-btn:hover { background:#f8f9fa; border-color:#1a73e8; }
+      .google-btn svg { width:20px; height:20px; flex-shrink:0; }
+      .role-selector { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px; }
+      .role-option { border:2px solid var(--border); border-radius:8px; padding:14px 10px; text-align:center; cursor:pointer; transition:.2s; }
+      .role-option:hover { border-color:var(--red); }
+      .role-option.selected { border-color:var(--red); background:var(--red-light,#fef2f2); }
+      .role-option .ro-icon  { font-size:26px; margin-bottom:6px; }
+      .role-option .ro-label { font-size:13px; font-weight:700; }
+      .role-option .ro-sub   { font-size:11px; color:var(--muted); }
+    </style>
+  </head>
+  <body>
+    <div class="auth-card">
+      <div class="auth-brand">
+        <div class="brand-icon">
+          <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <h1>IELTS MASTER</h1>
+        <p>Academic Test Practice Platform</p>
+      </div>
+      <div class="auth-body">
+        <div class="auth-tabs">
+          <button class="auth-tab active" onclick="switchTab('login')">Sign In</button>
+          <button class="auth-tab" onclick="switchTab('register')">Register</button>
+        </div>
 
-    <div id="alert-box" class="alert hidden"></div>
+        <div id="alert-box" class="alert hidden"></div>
 
-    <!-- ── LOGIN PANEL ── -->
-    <div id="panel-login">
-      <button class="google-btn" onclick="triggerGoogleLogin('student')">
-        <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-        Sign in with Google
-      </button>
-      <div class="divider">or use email</div>
-      <div class="form-group">
-        <label>Email Address</label>
-        <input type="email" id="login-email" class="form-control" placeholder="your@email.com">
-      </div>
-      <div class="form-group">
-        <label>Password</label>
-        <input type="password" id="login-password" class="form-control" placeholder="Your password">
-      </div>
-      <button class="btn btn-primary btn-full" onclick="doEmailLogin()">Log In</button>
-      <p style="text-align:center;margin-top:14px;font-size:13px;color:var(--muted)">
-        No account? <a href="#" onclick="switchTab('register')" style="color:var(--red);font-weight:600">Register here</a>
-      </p>
-    </div>
-
-    <!-- ── REGISTER PANEL ── -->
-    <div id="panel-register" style="display:none">
-      <button class="google-btn" onclick="triggerGoogleLogin(selectedRole)">
-        <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-        Register with Google
-      </button>
-      <div class="divider">or register with email</div>
-      <div class="form-group">
-        <label>Full Name</label>
-        <input type="text" id="reg-name" class="form-control" placeholder="Your full name">
-      </div>
-      <div class="form-group">
-        <label>Email Address</label>
-        <input type="email" id="reg-email" class="form-control" placeholder="your@email.com">
-      </div>
-      <div class="form-group">
-        <label>Password</label>
-        <input type="password" id="reg-password" class="form-control" placeholder="At least 6 characters">
-      </div>
-      <div class="form-group">
-        <label>I am registering as</label>
-        <div class="role-selector">
-          <div class="role-option selected" id="role-student" onclick="selectRole('student')">
-            <div class="ro-icon">🎓</div>
-            <div class="ro-label">Student</div>
-            <div class="ro-sub">Take tests &amp; track progress</div>
+        <!-- LOGIN -->
+        <div id="panel-login">
+          <button class="google-btn" onclick="triggerGoogleLogin('student')">
+            <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Sign in with Google
+          </button>
+          <div class="divider">or use email</div>
+          <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" id="login-email" class="form-control" placeholder="your@email.com">
           </div>
-          <div class="role-option" id="role-teacher" onclick="selectRole('teacher')">
-            <div class="ro-icon">👩‍🏫</div>
-            <div class="ro-label">Teacher</div>
-            <div class="ro-sub">View student results</div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="login-password" class="form-control" placeholder="Your password">
           </div>
+          <button class="btn btn-primary btn-full" onclick="doEmailLogin()">Log In</button>
+          <p style="text-align:center;margin-top:14px;font-size:13px;color:var(--muted)">
+            No account? <a href="#" onclick="switchTab('register')" style="color:var(--red);font-weight:600">Register here</a>
+          </p>
+        </div>
+
+        <!-- REGISTER -->
+        <div id="panel-register" style="display:none">
+          <button class="google-btn" onclick="triggerGoogleLogin(selectedRole)">
+            <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Register with Google
+          </button>
+          <div class="divider">or register with email</div>
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="reg-name" class="form-control" placeholder="Your full name">
+          </div>
+          <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" id="reg-email" class="form-control" placeholder="your@email.com">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="reg-password" class="form-control" placeholder="At least 6 characters">
+          </div>
+          <div class="form-group">
+            <label>I am registering as</label>
+            <div class="role-selector">
+              <div class="role-option selected" id="role-student" onclick="selectRole('student')">
+                <div class="ro-icon">🎓</div>
+                <div class="ro-label">Student</div>
+                <div class="ro-sub">Take tests &amp; track progress</div>
+              </div>
+              <div class="role-option" id="role-teacher" onclick="selectRole('teacher')">
+                <div class="ro-icon">👩‍🏫</div>
+                <div class="ro-label">Teacher</div>
+                <div class="ro-sub">View student results</div>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-full" onclick="doRegister()">Create Account</button>
+          <p style="text-align:center;margin-top:14px;font-size:13px;color:var(--muted)">
+            Already have an account? <a href="#" onclick="switchTab('login')" style="color:var(--red);font-weight:600">Sign in</a>
+          </p>
         </div>
       </div>
-      <button class="btn btn-primary btn-full" onclick="doRegister()">Create Account</button>
-      <p style="text-align:center;margin-top:14px;font-size:13px;color:var(--muted)">
-        Already have an account? <a href="#" onclick="switchTab('login')" style="color:var(--red);font-weight:600">Sign in</a>
-      </p>
     </div>
-  </div>
-</div>
 
-<script>
-window.addEventListener('DOMContentLoaded', async () => {
-  const u = await Auth.currentUser();
-  if (u) redirect();
+    <script>
+      window.addEventListener('DOMContentLoaded', async () => {
+        const u = await Auth.currentUser();
+        if (u) redirect();
+        if (typeof google !== 'undefined' && google.accounts) {
+          google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: onGoogleCredential,
+            auto_select: false,
+          });
+        }
+      });
 
-  if (typeof google !== 'undefined' && google.accounts) {
-    google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: onGoogleCredential,
-      auto_select: false,
-    });
-  }
-});
+      function redirect() { window.location.href = 'pages/dashboard.html'; }
 
-function redirect() {
-  window.location.href = 'pages/dashboard.html';
-}
+      let selectedRole = 'student';
+      let pendingGoogleRole = 'student';
 
-let selectedRole = 'student';
-let pendingGoogleRole = 'student';
+      function selectRole(r) {
+        selectedRole = r;
+        document.getElementById('role-student').classList.toggle('selected', r === 'student');
+        document.getElementById('role-teacher').classList.toggle('selected', r === 'teacher');
+      }
 
-function selectRole(r) {
-  selectedRole = r;
-  document.getElementById('role-student').classList.toggle('selected', r === 'student');
-  document.getElementById('role-teacher').classList.toggle('selected', r === 'teacher');
-}
+      function switchTab(tab) {
+        document.querySelectorAll('.auth-tab').forEach((t, i) =>
+          t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'))
+        );
+        document.getElementById('panel-login').style.display    = tab === 'login'    ? 'block' : 'none';
+        document.getElementById('panel-register').style.display = tab === 'register' ? 'block' : 'none';
+        hideAlert();
+      }
 
-function switchTab(tab) {
-  document.querySelectorAll('.auth-tab').forEach((t, i) =>
-    t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'))
-  );
-  document.getElementById('panel-login').style.display    = tab === 'login'    ? 'block' : 'none';
-  document.getElementById('panel-register').style.display = tab === 'register' ? 'block' : 'none';
-  hideAlert();
-}
+      function showAlert(msg, type = 'error') {
+        const el = document.getElementById('alert-box');
+        el.textContent = msg;
+        el.className = `alert alert-${type}`;
+      }
+      function hideAlert() {
+        document.getElementById('alert-box').className = 'alert hidden';
+      }
 
-function showAlert(msg, type = 'error') {
-  const el = document.getElementById('alert-box');
-  el.textContent = msg;
-  el.className = `alert alert-${type}`;
-}
-function hideAlert() {
-  document.getElementById('alert-box').className = 'alert hidden';
-}
+      function triggerGoogleLogin(role) {
+        pendingGoogleRole = role || 'student';
+        if (typeof google !== 'undefined' && google.accounts) {
+          google.accounts.id.prompt();
+        } else {
+          showAlert('Google Sign-In is not available. Please use email instead.');
+        }
+      }
 
-function triggerGoogleLogin(role) {
-  pendingGoogleRole = role || 'student';
-  if (typeof google !== 'undefined' && google.accounts) {
-    google.accounts.id.prompt();
-  } else {
-    showAlert('Google Sign-In is not available. Please use email instead.');
-  }
-}
+      async function onGoogleCredential(response) {
+        showAlert('Signing in with Google…', 'info');
+        const result = await Auth.handleGoogleCredential(response, pendingGoogleRole);
+        if (result.ok) redirect();
+        else showAlert(result.error);
+      }
 
-async function onGoogleCredential(response) {
-  showAlert('Signing in with Google…', 'info');
-  const result = await Auth.handleGoogleCredential(response, pendingGoogleRole);
-  if (result.ok) redirect();
-  else showAlert(result.error);
-}
+      async function doEmailLogin() {
+        const email    = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
+        if (!email || !password) { showAlert('Please enter your email and password.'); return; }
+        showAlert('Signing in…', 'info');
+        const result = await Auth.loginEmail(email, password);
+        if (result.ok) {
+          if (result.magicLink) {
+            showAlert('Check your email for a magic link to complete sign-in.', 'info');
+          } else {
+            redirect();
+          }
+        } else {
+          // Give a helpful message if email not confirmed
+          if (result.error.includes('Email not confirmed')) {
+            showAlert('Please check your email and click the confirmation link first, then try logging in again.');
+          } else {
+            showAlert(result.error);
+          }
+        }
+      }
 
-async function doEmailLogin() {
-  const email    = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-  if (!email || !password) { showAlert('Please enter your email and password.'); return; }
-  showAlert('Signing in…', 'info');
-  const result = await Auth.loginEmail(email, password);
-  if (result.ok) {
-    if (result.magicLink) {
-      showAlert('Check your email for a magic link to complete sign-in.', 'info');
-    } else {
-      redirect();
-    }
-  } else {
-    showAlert(result.error);
-  }
-}
+      async function doRegister() {
+        const name     = document.getElementById('reg-name').value.trim();
+        const email    = document.getElementById('reg-email').value.trim();
+        const password = document.getElementById('reg-password').value;
+        if (!name)               { showAlert('Please enter your full name.');             return; }
+        if (!email)              { showAlert('Please enter your email.');                 return; }
+        if (password.length < 6) { showAlert('Password must be at least 6 characters.'); return; }
 
-async function doRegister() {
-  const name     = document.getElementById('reg-name').value.trim();
-  const email    = document.getElementById('reg-email').value.trim();
-  const password = document.getElementById('reg-password').value;
-  if (!name)               { showAlert('Please enter your full name.');             return; }
-  if (!email)              { showAlert('Please enter your email.');                 return; }
-  if (password.length < 6) { showAlert('Password must be at least 6 characters.'); return; }
-  showAlert('Creating account…', 'info');
-  const result = await Auth.registerEmail(name, email, password);
-  if (result.ok) {
-    if (result.isTeacher) {
-      showAlert('Teacher account created! Check your email to verify, then log in with the teacher code.', 'info');
-    } else {
-      showAlert('Account created! Check your email to confirm, then sign in.', 'info');
-    }
-    switchTab('login');
-  } else {
-    showAlert(result.error);
-  }
-}
+        // Teacher uses teacher code as password
+        const finalPassword = selectedRole === 'teacher' ? 'Gitpush4611' : password;
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    if (document.getElementById('panel-login').style.display !== 'none') doEmailLogin();
-    else doRegister();
-  }
-});
-</script>
-</body>
+        showAlert('Creating account…', 'info');
+        const result = await Auth.registerEmail(name, email, finalPassword);
+        if (result.ok) {
+          if (result.isTeacher) {
+            showAlert('Teacher account created! Check your email to confirm, then log in with your teacher code as the password.', 'info');
+          } else {
+            showAlert('Account created! Check your email inbox and click the confirmation link, then sign in.', 'info');
+          }
+          switchTab('login');
+        } else {
+          showAlert(result.error);
+        }
+      }
+
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          if (document.getElementById('panel-login').style.display !== 'none') doEmailLogin();
+          else doRegister();
+        }
+      });
+    </script>
+  </body>
 </html>

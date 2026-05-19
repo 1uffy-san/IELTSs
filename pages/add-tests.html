@@ -1,280 +1,252 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Add Tests — IELTS Master</title>
-<link rel="stylesheet" href="../css/style.css">
-<script src="../js/auth.js" defer></script>
-<script src="../js/data.js" defer></script>
-<style>
-.section-tabs { display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap; }
-.section-tab { padding:10px 22px; border-radius:8px; border:2px solid var(--border); background:#fff; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; color:var(--muted); transition:.2s; }
-.section-tab.active { border-color:var(--red); color:var(--red); background:var(--red-light,#fef2f2); }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Add Tests — IELTS Master</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-config.js"></script>
+    <script src="../js/auth.js" defer></script>
+    <script src="../js/data.js" defer></script>
+    <style>
+      .section-tabs { display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap; }
+      .section-tab { padding:10px 22px; border-radius:8px; border:2px solid var(--border); background:#fff; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; color:var(--muted); transition:.2s; }
+      .section-tab.active { border-color:var(--red); color:var(--red); background:var(--red-light,#fef2f2); }
+      .form-card { background:#fff; border:1.5px solid var(--border); border-radius:14px; padding:28px 32px; margin-bottom:24px; }
+      .form-card h2 { font-size:17px; font-weight:700; margin-bottom:20px; }
+      .form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+      @media(max-width:600px){ .form-row{ grid-template-columns:1fr; } }
+      .custom-tests-list { display:flex; flex-direction:column; gap:12px; }
+      .ct-item { background:#fff; border:1.5px solid var(--border); border-radius:10px; padding:18px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
+      .ct-info h3 { font-size:15px; font-weight:700; margin-bottom:4px; }
+      .ct-meta { font-size:12px; color:var(--muted); }
+      .ct-actions { display:flex; gap:8px; }
+      .btn-danger { background:#fee2e2; color:#dc2626; border:1.5px solid #fca5a5; padding:7px 14px; border-radius:7px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:.2s; }
+      .btn-danger:hover { background:#fecaca; }
+      .alert-success { background:#d1fae5; color:#065f46; border:1.5px solid #6ee7b7; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:14px; }
+      .mode-selector { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+      .mode-card { border:2px solid var(--border); border-radius:10px; padding:16px; cursor:pointer; text-align:center; transition:.2s; }
+      .mode-card:hover { border-color:var(--red); }
+      .mode-card.selected { border-color:var(--red); background:var(--red-light,#fef2f2); }
+      .mode-card .mc-icon { font-size:28px; margin-bottom:8px; }
+      .mode-card .mc-label { font-size:14px; font-weight:700; margin-bottom:4px; }
+      .mode-card .mc-sub { font-size:12px; color:var(--muted); }
+      .url-preview { background:#f8f9fa; border:1.5px solid var(--border); border-radius:8px; padding:12px 16px; font-size:13px; color:var(--muted); margin-top:8px; word-break:break-all; }
+    </style>
+  </head>
+  <body>
+    <header class="app-header" id="app-header"></header>
+    <main class="app-main" id="main">
+      <div class="page-title">Add Tests ➕</div>
+      <div class="page-sub">Add tests for your students — paste a URL or raw HTML</div>
 
-.form-card { background:#fff; border:1.5px solid var(--border); border-radius:14px; padding:28px 32px; margin-bottom:24px; }
-.form-card h2 { font-size:17px; font-weight:700; margin-bottom:20px; }
-.form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-.form-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
-@media(max-width:600px) { .form-row, .form-row-3 { grid-template-columns:1fr; } }
-
-.questions-list { display:flex; flex-direction:column; gap:12px; margin-top:16px; }
-.q-item { background:var(--bg,#f8f9fa); border:1.5px solid var(--border); border-radius:10px; padding:16px 18px; position:relative; }
-.q-item-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-.q-num { font-size:13px; font-weight:700; color:var(--red); }
-.q-remove { background:none; border:none; cursor:pointer; font-size:18px; color:var(--muted); padding:0 4px; line-height:1; }
-.q-remove:hover { color:var(--red); }
-
-.add-q-btn { display:flex; align-items:center; gap:8px; padding:10px 18px; border:2px dashed var(--border); background:none; border-radius:8px; font-size:14px; font-weight:600; color:var(--muted); cursor:pointer; font-family:inherit; transition:.2s; margin-top:12px; width:100%; justify-content:center; }
-.add-q-btn:hover { border-color:var(--red); color:var(--red); background:var(--red-light,#fef2f2); }
-
-.custom-tests-list { display:flex; flex-direction:column; gap:12px; }
-.ct-item { background:#fff; border:1.5px solid var(--border); border-radius:10px; padding:18px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
-.ct-info h3 { font-size:15px; font-weight:700; margin-bottom:4px; }
-.ct-meta { font-size:12px; color:var(--muted); }
-.ct-actions { display:flex; gap:8px; }
-.btn-danger { background:#fee2e2; color:#dc2626; border:1.5px solid #fca5a5; padding:7px 14px; border-radius:7px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:.2s; }
-.btn-danger:hover { background:#fecaca; }
-
-.alert-success { background:#d1fae5; color:#065f46; border:1.5px solid #6ee7b7; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:14px; }
-</style>
-</head>
-<body>
-<header class="app-header" id="app-header"></header>
-<main class="app-main" id="main">
-  <div class="page-title">Add Tests ➕</div>
-  <div class="page-sub">Create custom reading or listening tests for your students</div>
-
-  <div class="section-tabs">
-    <button class="section-tab active" onclick="showSection('create')">✏️ Create New Test</button>
-    <button class="section-tab" onclick="showSection('manage')">📋 Manage Tests</button>
-  </div>
-
-  <!-- CREATE SECTION -->
-  <div id="section-create">
-    <div id="success-msg" class="alert-success hidden">✅ Test saved successfully! Students can now find it in the Tests page.</div>
-
-    <div class="form-card">
-      <h2>Test Details</h2>
-      <div class="form-group">
-        <label>Test Title</label>
-        <input type="text" id="test-title" class="form-control" placeholder="e.g. Cambridge IELTS 18 Reading Test 1">
+      <div class="section-tabs">
+        <button class="section-tab active" onclick="showSection('create')">✏️ Add New Test</button>
+        <button class="section-tab" onclick="showSection('manage')">📋 Manage Tests</button>
       </div>
-      <div class="form-row">
-        <div class="form-group" style="margin:0">
-          <label>Type</label>
-          <select id="test-type" class="form-control" onchange="onTypeChange()">
-            <option value="reading">📖 Reading</option>
-            <option value="listening">🎧 Listening</option>
-          </select>
+
+      <!-- CREATE SECTION -->
+      <div id="section-create">
+        <div id="success-msg" class="alert-success hidden">
+          ✅ Test saved! Students can now see it in the Tests page.
         </div>
-        <div class="form-group" style="margin:0">
-          <label>Time Limit (minutes)</label>
-          <input type="number" id="test-time" class="form-control" value="60" min="1" max="180">
-        </div>
-      </div>
-    </div>
 
-    <!-- READING-SPECIFIC -->
-    <div id="reading-section" class="form-card">
-      <h2>Passage</h2>
-      <div class="form-group">
-        <label>Passage HTML <span style="font-weight:400;color:var(--muted)">(supports &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt; tags)</span></label>
-        <textarea id="passage-html" class="form-control" rows="8" placeholder="<h2>Title</h2><p>Your passage text here...</p>"></textarea>
-      </div>
-    </div>
-
-    <!-- QUESTIONS -->
-    <div class="form-card">
-      <h2>Questions <span style="font-weight:400;color:var(--muted);font-size:14px" id="q-count-label"></span></h2>
-      <div id="questions-list" class="questions-list"></div>
-      <button class="add-q-btn" onclick="addQuestion()">+ Add Question</button>
-    </div>
-
-    <div id="form-alert" class="alert hidden"></div>
-    <button class="btn btn-primary" onclick="saveTest()" style="min-width:160px">💾 Save Test</button>
-  </div>
-
-  <!-- MANAGE SECTION -->
-  <div id="section-manage" style="display:none">
-    <div class="card">
-      <div class="card-header">
-        <h2>Custom Tests</h2>
-      </div>
-      <div id="manage-list"></div>
-    </div>
-  </div>
-</main>
-
-<script>
-let questions = [];
-let qCounter  = 0;
-
-document.addEventListener('DOMContentLoaded', () => {
-  const user = Auth.requireAuth('teacher');
-  if (!user) return;
-  renderHeader('add-tests.html');
-  addQuestion();
-  addQuestion();
-  updateQCount();
-});
-
-function showSection(s) {
-  document.getElementById('section-create').style.display  = s === 'create'  ? 'block' : 'none';
-  document.getElementById('section-manage').style.display  = s === 'manage'  ? 'block' : 'none';
-  document.querySelectorAll('.section-tab').forEach((t,i) => {
-    t.classList.toggle('active', (i===0&&s==='create')||(i===1&&s==='manage'));
-  });
-  if (s === 'manage') renderManage();
-}
-
-function onTypeChange() {
-  const isReading = document.getElementById('test-type').value === 'reading';
-  document.getElementById('reading-section').style.display = isReading ? 'block' : 'none';
-}
-
-function addQuestion() {
-  qCounter++;
-  const id = 'q_' + qCounter;
-  questions.push({ id });
-  const list = document.getElementById('questions-list');
-  const div  = document.createElement('div');
-  div.className = 'q-item';
-  div.id = 'qi_' + id;
-  div.innerHTML = `
-    <div class="q-item-header">
-      <span class="q-num">Question ${questions.length}</span>
-      <button class="q-remove" onclick="removeQuestion('${id}')" title="Remove">✕</button>
-    </div>
-    <div class="form-row" style="margin-bottom:10px">
-      <div class="form-group" style="margin:0">
-        <label style="font-size:12px">Text Before Blank <span style="color:var(--muted)">(optional)</span></label>
-        <input type="text" class="form-control q-stem" placeholder="e.g. People conserved the nutritional value of">
-      </div>
-      <div class="form-group" style="margin:0">
-        <label style="font-size:12px">Text After Blank <span style="color:var(--muted)">(optional)</span></label>
-        <input type="text" class="form-control q-after" placeholder="e.g. using a method of freezing.">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group" style="margin:0">
-        <label style="font-size:12px">Correct Answer <span style="color:var(--red)">*</span></label>
-        <input type="text" class="form-control q-answer" placeholder="e.g. potatoes">
-      </div>
-      <div class="form-group" style="margin:0">
-        <label style="font-size:12px">Explanation <span style="color:var(--muted)">(for result page)</span></label>
-        <input type="text" class="form-control q-explanation" placeholder="e.g. The passage states...">
-      </div>
-    </div>`;
-  list.appendChild(div);
-  updateQCount();
-}
-
-function removeQuestion(id) {
-  questions = questions.filter(q => q.id !== id);
-  const el = document.getElementById('qi_' + id);
-  if (el) el.remove();
-  // renumber
-  document.querySelectorAll('.q-item .q-num').forEach((el, i) => el.textContent = 'Question ' + (i+1));
-  updateQCount();
-}
-
-function updateQCount() {
-  const n = document.querySelectorAll('.q-item').length;
-  document.getElementById('q-count-label').textContent = `(${n} question${n!==1?'s':''})`;
-}
-
-function getQuestionData() {
-  return [...document.querySelectorAll('.q-item')].map((el, i) => ({
-    id:          i + 1,
-    stem:        el.querySelector('.q-stem').value.trim(),
-    after:       el.querySelector('.q-after').value.trim(),
-    answer:      el.querySelector('.q-answer').value.trim(),
-    explanation: el.querySelector('.q-explanation').value.trim(),
-  }));
-}
-
-function showAlert(msg, type='error') {
-  const el = document.getElementById('form-alert');
-  el.textContent = msg;
-  el.className = `alert alert-${type}`;
-}
-function hideAlert() { document.getElementById('form-alert').className = 'alert hidden'; }
-
-function saveTest() {
-  hideAlert();
-  const title   = document.getElementById('test-title').value.trim();
-  const type    = document.getElementById('test-type').value;
-  const timeLim = parseInt(document.getElementById('test-time').value) || 60;
-  const passage = type === 'reading' ? document.getElementById('passage-html').value.trim() : '';
-  const qs      = getQuestionData();
-
-  if (!title)               { showAlert('Please enter a test title.'); return; }
-  if (!qs.length)           { showAlert('Add at least one question.'); return; }
-  if (qs.some(q => !q.answer)) { showAlert('All questions must have a correct answer.'); return; }
-  if (type === 'reading' && !passage) { showAlert('Please enter the reading passage.'); return; }
-
-  const test = {
-    id:        'custom_' + Date.now(),
-    title,
-    type,
-    timeLimitMinutes: timeLim,
-    passage,
-    questions: qs,
-    createdAt: new Date().toISOString(),
-    custom:    true,
-  };
-
-  const tests = DB.getCustomTests();
-  tests.push(test);
-  DB.saveCustomTests(tests);
-
-  // Reset form
-  document.getElementById('test-title').value = '';
-  document.getElementById('passage-html').value = '';
-  document.getElementById('questions-list').innerHTML = '';
-  questions = [];
-  qCounter  = 0;
-  addQuestion();
-  addQuestion();
-  updateQCount();
-
-  const msg = document.getElementById('success-msg');
-  msg.classList.remove('hidden');
-  setTimeout(() => msg.classList.add('hidden'), 4000);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function renderManage() {
-  const tests = DB.getCustomTests();
-  const el = document.getElementById('manage-list');
-  if (!tests.length) {
-    el.innerHTML = `<div class="empty-state"><div class="es-icon">📋</div><h3>No custom tests yet</h3><p>Create your first test using the form.</p><button class="btn btn-primary" onclick="showSection('create')">Create Test</button></div>`;
-    return;
-  }
-  el.innerHTML = `<div class="custom-tests-list">
-    ${[...tests].reverse().map(t => `
-      <div class="ct-item">
-        <div class="ct-info">
-          <h3>${t.title}</h3>
-          <div class="ct-meta">
-            <span class="badge ${t.type==='reading'?'badge-red':'badge-blue'}">${t.type==='reading'?'📖 Reading':'🎧 Listening'}</span>
-            &nbsp;${t.questions.length} questions · ${t.timeLimitMinutes} min · Added ${new Date(t.createdAt).toLocaleDateString()}
+        <div class="form-card">
+          <h2>Test Details</h2>
+          <div class="form-group">
+            <label>Test Title</label>
+            <input type="text" id="test-title" class="form-control" placeholder="e.g. Cambridge IELTS 18 Reading Test 1">
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="margin:0">
+              <label>Type</label>
+              <select id="test-type" class="form-control">
+                <option value="reading">📖 Reading</option>
+                <option value="listening">🎧 Listening</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Number of Questions</label>
+              <input type="number" id="test-qcount" class="form-control" value="13" min="1" max="100">
+            </div>
           </div>
         </div>
-        <div class="ct-actions">
-          <button class="btn-danger" onclick="deleteTest('${t.id}')">🗑 Delete</button>
-        </div>
-      </div>`).join('')}
-  </div>`;
-}
 
-function deleteTest(id) {
-  if (!confirm('Delete this test? Students who have taken it will keep their results.')) return;
-  const tests = DB.getCustomTests().filter(t => t.id !== id);
-  DB.saveCustomTests(tests);
-  renderManage();
-}
-</script>
-</body>
+        <div class="form-card">
+          <h2>Test Content</h2>
+          <p style="font-size:14px;color:var(--muted);margin-bottom:20px">Choose how you want to provide the test — paste a URL (recommended) or paste raw HTML.</p>
+
+          <div class="mode-selector">
+            <div class="mode-card selected" id="mode-url" onclick="selectMode('url')">
+              <div class="mc-icon">🔗</div>
+              <div class="mc-label">Paste URL</div>
+              <div class="mc-sub">Link to an HTML file (Google Drive, Netlify, etc.)</div>
+            </div>
+            <div class="mode-card" id="mode-html" onclick="selectMode('html')">
+              <div class="mc-icon">📄</div>
+              <div class="mc-label">Paste HTML</div>
+              <div class="mc-sub">Paste raw HTML code directly</div>
+            </div>
+          </div>
+
+          <!-- URL MODE -->
+          <div id="url-section">
+            <div class="form-group">
+              <label>Test URL</label>
+              <input type="url" id="test-url" class="form-control" placeholder="https://example.com/test.html" oninput="previewUrl()">
+              <div id="url-preview" class="url-preview" style="display:none"></div>
+            </div>
+            <p style="font-size:12px;color:var(--muted);margin-top:8px">
+              💡 Tip: Upload your HTML file to Google Drive, Netlify, or GitHub Pages and paste the public link here.
+            </p>
+          </div>
+
+          <!-- HTML MODE -->
+          <div id="html-section" style="display:none">
+            <div class="form-group">
+              <label>Raw HTML</label>
+              <textarea id="test-html" class="form-control" rows="10" placeholder="<!DOCTYPE html><html>...</html>"></textarea>
+            </div>
+            <p style="font-size:12px;color:var(--muted);margin-top:8px">
+              💡 Paste the full HTML of your test page. Students will see this rendered in their browser.
+            </p>
+          </div>
+        </div>
+
+        <div id="form-alert" class="alert hidden"></div>
+        <button class="btn btn-primary" onclick="saveTest()" style="min-width:160px">💾 Save Test</button>
+      </div>
+
+      <!-- MANAGE SECTION -->
+      <div id="section-manage" style="display:none">
+        <div class="card">
+          <div class="card-header"><h2>All Custom Tests</h2></div>
+          <div id="manage-list"></div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      let currentMode = 'url';
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        const user = await Auth.initUser('teacher');
+        if (!user) return;
+        renderHeader('add-tests.html');
+      });
+
+      function selectMode(mode) {
+        currentMode = mode;
+        document.getElementById('mode-url').classList.toggle('selected', mode === 'url');
+        document.getElementById('mode-html').classList.toggle('selected', mode === 'html');
+        document.getElementById('url-section').style.display  = mode === 'url'  ? 'block' : 'none';
+        document.getElementById('html-section').style.display = mode === 'html' ? 'block' : 'none';
+      }
+
+      function previewUrl() {
+        const url = document.getElementById('test-url').value.trim();
+        const preview = document.getElementById('url-preview');
+        if (url) {
+          preview.style.display = 'block';
+          preview.textContent = '🔗 ' + url;
+        } else {
+          preview.style.display = 'none';
+        }
+      }
+
+      function showSection(s) {
+        document.getElementById('section-create').style.display = s === 'create' ? 'block' : 'none';
+        document.getElementById('section-manage').style.display = s === 'manage' ? 'block' : 'none';
+        document.querySelectorAll('.section-tab').forEach((t, i) => {
+          t.classList.toggle('active', (i === 0 && s === 'create') || (i === 1 && s === 'manage'));
+        });
+        if (s === 'manage') renderManage();
+      }
+
+      function showAlert(msg, type = 'error') {
+        const el = document.getElementById('form-alert');
+        el.textContent = msg;
+        el.className = `alert alert-${type}`;
+      }
+      function hideAlert() {
+        document.getElementById('form-alert').className = 'alert hidden';
+      }
+
+      async function saveTest() {
+        hideAlert();
+        const title   = document.getElementById('test-title').value.trim();
+        const type    = document.getElementById('test-type').value;
+        const qcount  = parseInt(document.getElementById('test-qcount').value) || 13;
+        const url     = document.getElementById('test-url').value.trim();
+        const html    = document.getElementById('test-html').value.trim();
+
+        if (!title) { showAlert('Please enter a test title.'); return; }
+
+        if (currentMode === 'url' && !url) {
+          showAlert('Please paste a URL for the test.'); return;
+        }
+        if (currentMode === 'html' && !html) {
+          showAlert('Please paste the HTML for the test.'); return;
+        }
+
+        const testObj = {
+          title,
+          type,
+          question_count: qcount,
+          mode: currentMode,
+          url:  currentMode === 'url'  ? url  : null,
+          html: currentMode === 'html' ? html : null,
+          created_at: new Date().toISOString(),
+        };
+
+        const result = await DB.saveTest(testObj);
+        if (!result.ok) { showAlert(result.error); return; }
+
+        // Reset form
+        document.getElementById('test-title').value = '';
+        document.getElementById('test-url').value   = '';
+        document.getElementById('test-html').value  = '';
+        document.getElementById('url-preview').style.display = 'none';
+
+        const msg = document.getElementById('success-msg');
+        msg.classList.remove('hidden');
+        setTimeout(() => msg.classList.add('hidden'), 4000);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      async function renderManage() {
+        const tests = await DB.getTests();
+        const el = document.getElementById('manage-list');
+        if (!tests.length) {
+          el.innerHTML = `<div class="empty-state"><div class="es-icon">📋</div><h3>No tests yet</h3><p>Add your first test using the form.</p><button class="btn btn-primary" onclick="showSection('create')">Add Test</button></div>`;
+          return;
+        }
+        el.innerHTML = `<div class="custom-tests-list">
+          ${[...tests].reverse().map(t => `
+            <div class="ct-item">
+              <div class="ct-info">
+                <h3>${t.title}</h3>
+                <div class="ct-meta">
+                  <span class="badge ${t.type === 'reading' ? 'badge-red' : 'badge-blue'}">${t.type === 'reading' ? '📖 Reading' : '🎧 Listening'}</span>
+                  &nbsp;${t.question_count || '?'} questions ·
+                  ${t.mode === 'url' ? '🔗 URL: ' + (t.url || '').slice(0, 50) + '...' : '📄 Inline HTML'}
+                  · Added ${new Date(t.created_at).toLocaleDateString()}
+                </div>
+              </div>
+              <div class="ct-actions">
+                <a href="${t.mode === 'url' ? t.url : 'data:text/html;charset=utf-8,' + encodeURIComponent(t.html || '')}" target="_blank" class="btn btn-outline btn-sm">👁 Preview</a>
+                <button class="btn-danger" onclick="deleteTest('${t.id}')">🗑 Delete</button>
+              </div>
+            </div>`).join('')}
+        </div>`;
+      }
+
+      async function deleteTest(id) {
+        if (!confirm('Delete this test? Students who have taken it will keep their results.')) return;
+        await DB.deleteTest(id);
+        renderManage();
+      }
+    </script>
+  </body>
 </html>
