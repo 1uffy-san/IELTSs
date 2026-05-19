@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tests — IELTS Master</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/auth.js" defer></script>
+<script src="../js/data.js" defer></script>
+<style>
+.tabs { display:flex; gap:0; background:#fff; border:1.5px solid var(--border); border-radius:10px; padding:4px; margin-bottom:28px; width:fit-content; }
+.tab-btn { padding:9px 24px; border-radius:7px; border:none; background:none; font-size:14px; font-weight:600; font-family:inherit; color:var(--muted); cursor:pointer; transition:.2s; }
+.tab-btn.active { background:var(--red); color:#fff; }
+.test-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:16px; }
+.test-card { background:#fff; border:1.5px solid var(--border); border-radius:12px; overflow:hidden; transition:.2s; }
+.test-card:hover { box-shadow:0 6px 20px rgba(0,0,0,.1); transform:translateY(-2px); }
+.tc-header { padding:18px 20px 14px; display:flex; align-items:flex-start; gap:14px; }
+.tc-icon { width:46px; height:46px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+.tc-icon.reading  { background:#FEF0F0; }
+.tc-icon.listening{ background:#EFF6FF; }
+.tc-icon.custom-reading   { background:#FEF0F0; border:2px dashed #fca5a5; }
+.tc-icon.custom-listening { background:#EFF6FF; border:2px dashed #93c5fd; }
+.tc-title { font-size:15px; font-weight:700; line-height:1.3; margin-bottom:4px; }
+.tc-meta { font-size:12px; color:var(--muted); }
+.tc-divider { height:1px; background:var(--border); margin:0 20px; }
+.tc-footer { padding:14px 20px; display:flex; align-items:center; justify-content:space-between; }
+.tc-badge-row { display:flex; gap:6px; flex-wrap:wrap; }
+.tc-attempted { font-size:12px; color:var(--green); font-weight:600; }
+.tc-score { font-size:12px; color:var(--muted); }
+.section-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin-bottom:12px; margin-top:8px; }
+.section-label + .section-label { margin-top:28px; }
+</style>
+</head>
+<body>
+<header class="app-header" id="app-header"></header>
+<main class="app-main" id="main">
+  <div class="page-title">Practice Tests 📋</div>
+  <div class="page-sub">Select a test to begin — results are saved automatically</div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('reading',this)">📖 Reading</button>
+    <button class="tab-btn" onclick="switchTab('listening',this)">🎧 Listening</button>
+  </div>
+
+  <div id="tab-reading">
+    <div id="reading-custom-section" style="display:none">
+      <div class="section-label">Teacher-Created Reading Tests</div>
+      <div class="test-grid" id="reading-custom-grid"></div>
+      <div class="section-label" style="margin-top:28px">Cambridge Academic Reading Tests</div>
+    </div>
+    <div id="reading-builtin-label" class="section-label">Cambridge Academic Reading Tests</div>
+    <div class="test-grid" id="reading-grid"></div>
+  </div>
+
+  <div id="tab-listening" style="display:none">
+    <div id="listening-custom-section" style="display:none">
+      <div class="section-label">Teacher-Created Listening Tests</div>
+      <div class="test-grid" id="listening-custom-grid"></div>
+      <div class="section-label" style="margin-top:28px">Cambridge Academic Listening Tests</div>
+    </div>
+    <div id="listening-builtin-label" class="section-label">Cambridge Academic Listening Tests</div>
+    <div class="test-grid" id="listening-grid"></div>
+  </div>
+</main>
+
+<script>
+let user, myResults;
+
+document.addEventListener('DOMContentLoaded', () => {
+  user = Auth.requireAuth('student');
+  if (!user) return;
+  renderHeader('tests.html');
+  myResults = DB.getUserResults(user.id);
+
+  // Built-in tests
+  renderGrid('reading',   READING_TESTS,   'reading-grid',   false);
+  renderGrid('listening', LISTENING_TESTS, 'listening-grid', false);
+
+  // Custom tests created by teachers
+  const customTests = DB.getCustomTests();
+  const customReading   = customTests.filter(t => t.type === 'reading');
+  const customListening = customTests.filter(t => t.type === 'listening');
+
+  if (customReading.length) {
+    renderGrid('reading', customReading, 'reading-custom-grid', true);
+    document.getElementById('reading-custom-section').style.display = 'block';
+    document.getElementById('reading-builtin-label').style.display  = 'none'; // hidden — label is inside the section block
+  }
+  if (customListening.length) {
+    renderGrid('listening', customListening, 'listening-custom-grid', true);
+    document.getElementById('listening-custom-section').style.display = 'block';
+    document.getElementById('listening-builtin-label').style.display  = 'none';
+  }
+});
+
+function renderGrid(type, tests, gridId, isCustom) {
+  const grid = document.getElementById(gridId);
+  const isRead = type === 'reading';
+  grid.innerHTML = tests.map(t => {
+    const attempts = myResults.filter(r => r.type === type && r.test === t.title);
+    const best     = attempts.length ? Math.max(...attempts.map(r => bandScore(r.score, r.total))) : null;
+    const last     = attempts[attempts.length - 1];
+    const qCount   = isCustom ? t.questions.length : (isRead ? 7 : 10);
+    const iconClass = isCustom ? `custom-${type}` : type;
+    const metaText  = isCustom
+      ? `Teacher Test · ${qCount} Questions · ${t.timeLimitMinutes} min`
+      : `Cambridge IELTS Book ${t.book} · Test ${t.num} · ${qCount} Questions`;
+
+    return `<div class="test-card">
+      <div class="tc-header">
+        <div class="tc-icon ${iconClass}">${isRead ? '📖' : '🎧'}</div>
+        <div>
+          <div class="tc-title">${t.title}</div>
+          <div class="tc-meta">${metaText}</div>
+        </div>
+      </div>
+      <div class="tc-divider"></div>
+      <div class="tc-footer">
+        <div>
+          ${attempts.length
+            ? `<div class="tc-attempted">✓ Attempted ${attempts.length}×</div>
+               <div class="tc-score">Best: Band ${best} · Last: ${last.score}/${last.total}</div>`
+            : `<span class="badge badge-gray">Not attempted</span>`
+          }
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="startTest('${type}','${t.id}','${encodeURIComponent(t.title)}')">
+          ${attempts.length ? 'Retake' : 'Start'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-reading').style.display   = tab === 'reading'   ? 'block' : 'none';
+  document.getElementById('tab-listening').style.display = tab === 'listening' ? 'block' : 'none';
+}
+
+function startTest(type, id, title) {
+  // Custom tests have ids starting with 'custom_'; route accordingly
+  if (id.startsWith('custom_')) {
+    window.location.href = `custom-test.html?id=${id}&title=${title}`;
+    return;
+  }
+  const page = type === 'reading' ? 'reading-test.html' : 'listening-test.html';
+  window.location.href = `${page}?id=${id}&title=${title}`;
+}
+</script>
+</body>
+</html>

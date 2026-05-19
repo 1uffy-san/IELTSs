@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Results — IELTS Master</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase-config.js"></script>
+<script src="../js/auth.js" defer></script>
+<script src="../js/data.js" defer></script>
+<style>
+.summary-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:28px; }
+.sum-card { background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:18px 16px; text-align:center; }
+.sum-icon { font-size:28px; margin-bottom:8px; }
+.sum-num  { font-size:26px; font-weight:800; margin-bottom:4px; }
+.sum-label{ font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+.band-chart { background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:20px 24px; margin-bottom:24px; }
+.band-chart h3 { font-size:15px; font-weight:700; margin-bottom:16px; }
+.chart-area { display:flex; align-items:flex-end; gap:6px; height:120px; }
+.chart-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end; }
+.chart-bar { width:100%; border-radius:4px 4px 0 0; min-height:4px; transition:height .4s ease; }
+.chart-label { font-size:10px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; text-align:center; }
+.chart-value { font-size:10px; font-weight:700; }
+.chart-empty { color:var(--muted); font-size:14px; text-align:center; padding:30px; }
+.filter-row { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+.filter-select { padding:8px 12px; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; outline:none; background:#fff; cursor:pointer; }
+.filter-select:focus { border-color:var(--red); }
+.result-row { cursor:pointer; transition:.15s; }
+.result-row:hover td { background:#FEF9F9; }
+.detail-panel { background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:24px; margin-bottom:24px; display:none; }
+.detail-panel.open { display:block; }
+.detail-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; }
+.detail-title { font-size:17px; font-weight:700; margin-bottom:4px; }
+.detail-meta { font-size:13px; color:var(--muted); }
+.detail-score-big { font-size:42px; font-weight:800; line-height:1; }
+.detail-band { font-size:14px; color:var(--muted); margin-top:4px; }
+.answers-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; margin-top:16px; }
+.answer-row { display:flex; align-items:center; gap:10px; background:var(--bg); border-radius:8px; padding:10px 12px; }
+.answer-q { font-size:13px; font-weight:700; min-width:28px; }
+.answer-yours { font-size:13px; flex:1; }
+.answer-correct { font-size:12px; color:var(--muted); }
+.answer-icon { font-size:16px; }
+.progress-bar-outer { height:8px; background:var(--border); border-radius:4px; overflow:hidden; margin:10px 0; }
+.progress-bar-inner { height:100%; border-radius:4px; transition:width .6s ease; }
+</style>
+</head>
+<body>
+<header class="app-header" id="app-header"></header>
+<main class="app-main" id="main">
+  <div class="page-title">My Results 📊</div>
+  <div class="page-sub">Your test history and performance over time</div>
+  <div class="summary-grid" id="summary-grid"><div style="color:var(--muted);padding:20px">Loading…</div></div>
+  <div class="band-chart">
+    <h3>Band Score History</h3>
+    <div id="chart-area" class="chart-area"></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <h2>All Results</h2>
+      <div class="filter-row">
+        <select class="filter-select" id="filter-type" onchange="renderTable()">
+          <option value="all">All Types</option>
+          <option value="reading">📖 Reading</option>
+          <option value="listening">🎧 Listening</option>
+        </select>
+        <select class="filter-select" id="sort-by" onchange="renderTable()">
+          <option value="date-desc">Newest First</option>
+          <option value="date-asc">Oldest First</option>
+          <option value="band-desc">Best Band</option>
+          <option value="band-asc">Worst Band</option>
+        </select>
+      </div>
+    </div>
+    <div id="detail-panel" class="detail-panel"></div>
+    <div id="results-table"></div>
+  </div>
+</main>
+
+<script>
+let user, results, selectedIdx = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  user = await Auth.initUser('student');
+  if (!user) return;
+  renderHeader('results.html');
+  results = await DB.getUserResults(user.id);
+  renderSummary();
+  renderChart();
+  renderTable();
+});
+
+function renderSummary() {
+  const rCt  = results.filter(r => r.type==='reading').length;
+  const lCt  = results.filter(r => r.type==='listening').length;
+  const best = results.length ? Math.max(...results.map(r => bandScore(r.score,r.total))) : null;
+  const avg  = results.length
+    ? (results.reduce((s,r) => s + bandScore(r.score,r.total), 0) / results.length).toFixed(1)
+    : null;
+  document.getElementById('summary-grid').innerHTML = `
+    <div class="sum-card"><div class="sum-icon">📋</div><div class="sum-num">${results.length}</div><div class="sum-label">Total Tests</div></div>
+    <div class="sum-card"><div class="sum-icon">📖</div><div class="sum-num">${rCt}</div><div class="sum-label">Reading Tests</div></div>
+    <div class="sum-card"><div class="sum-icon">🎧</div><div class="sum-num">${lCt}</div><div class="sum-label">Listening Tests</div></div>
+    <div class="sum-card"><div class="sum-icon">🏆</div><div class="sum-num" style="color:var(--green)">${best !== null ? 'Band '+best : '—'}</div><div class="sum-label">Best Band</div></div>
+    <div class="sum-card"><div class="sum-icon">📈</div><div class="sum-num">${avg !== null ? 'Band '+avg : '—'}</div><div class="sum-label">Avg Band</div></div>`;
+}
+
+function renderChart() {
+  const area = document.getElementById('chart-area');
+  if (!results.length) {
+    area.innerHTML = `<div class="chart-empty" style="width:100%">No results yet. Take a test to see your progress here.</div>`;
+    return;
+  }
+  const last12  = [...results].slice(-12);
+  const maxBand = 9;
+  area.innerHTML = last12.map(r => {
+    const band  = bandScore(r.score, r.total);
+    const pct   = pctScore(r.score, r.total);
+    const hPct  = Math.round((band / maxBand) * 100);
+    const color = bandColor(pct);
+    const shortLabel = r.test
+      .replace('Cambridge IELTS ','')
+      .replace(' Academic Reading Test','R')
+      .replace(' Academic Listening Test','L');
+    return `<div class="chart-bar-wrap" title="${r.test} — Band ${band}">
+      <div class="chart-value" style="color:${color}">B${band}</div>
+      <div class="chart-bar" style="height:${hPct}%;background:${color}"></div>
+      <div class="chart-label">${shortLabel}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderTable() {
+  const typeFilter = document.getElementById('filter-type').value;
+  const sortBy     = document.getElementById('sort-by').value;
+  let list = results.map((r, i) => ({...r, origIdx: i}));
+  if (typeFilter !== 'all') list = list.filter(r => r.type === typeFilter);
+  list.sort((a, b) => {
+    if (sortBy === 'date-desc') return b.origIdx - a.origIdx;
+    if (sortBy === 'date-asc')  return a.origIdx - b.origIdx;
+    const ba = bandScore(a.score, a.total), bb = bandScore(b.score, b.total);
+    if (sortBy === 'band-desc') return bb - ba;
+    if (sortBy === 'band-asc')  return ba - bb;
+    return 0;
+  });
+  const wrap = document.getElementById('results-table');
+  if (!list.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="es-icon">📋</div><h3>No results yet</h3><p>Take your first test to see results here.</p><a href="tests.html" class="btn btn-primary">Browse Tests</a></div>`;
+    return;
+  }
+  wrap.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Test</th><th>Type</th><th>Score</th><th>Band</th><th>%</th><th>Date</th><th></th></tr></thead>
+    <tbody>
+    ${list.map(r => {
+      const band = bandScore(r.score, r.total);
+      const pct  = pctScore(r.score, r.total);
+      return `<tr class="result-row" onclick="toggleDetail(${r.origIdx})">
+        <td style="font-weight:600">${r.test}</td>
+        <td><span class="badge ${r.type==='reading'?'badge-red':'badge-blue'}">${r.type==='reading'?'📖 Reading':'🎧 Listening'}</span></td>
+        <td>${r.score}/${r.total}</td>
+        <td style="font-weight:800;color:${bandColor(pct)}">Band ${band}</td>
+        <td><div style="display:flex;align-items:center;gap:8px"><div style="width:60px;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${bandColor(pct)};border-radius:3px"></div></div>${pct}%</div></td>
+        <td style="color:var(--muted)">${r.date}</td>
+        <td><span style="color:var(--muted);font-size:16px">${selectedIdx===r.origIdx?'▲':'▼'}</span></td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+function toggleDetail(idx) {
+  const panel = document.getElementById('detail-panel');
+  if (selectedIdx === idx) {
+    selectedIdx = null;
+    panel.classList.remove('open');
+    renderTable();
+    return;
+  }
+  selectedIdx = idx;
+  renderTable();
+  const r = results[idx];
+  if (!r) return;
+  const band = bandScore(r.score, r.total);
+  const pct  = pctScore(r.score, r.total);
+  let answersHTML = '';
+  if (r.answers && r.correctAnswers) {
+    answersHTML = `<div class="answers-grid">
+      ${r.correctAnswers.map((correct, i) => {
+        const yours = (r.answers[i] || '').trim().toLowerCase();
+        const ok    = yours === correct.toLowerCase();
+        return `<div class="answer-row">
+          <div class="answer-q">Q${i+1}</div>
+          <div class="answer-yours" style="color:${ok?'var(--green)':'var(--red)'}"><strong>Your answer:</strong> ${r.answers[i] || '(blank)'}</div>
+          ${!ok ? `<div class="answer-correct">✓ ${correct}</div>` : ''}
+          <div class="answer-icon">${ok?'✅':'❌'}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+  panel.innerHTML = `
+    <div class="detail-header">
+      <div>
+        <div class="detail-title">${r.test}</div>
+        <div class="detail-meta">${r.type==='reading'?'📖 Reading':'🎧 Listening'} · ${r.date}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="detail-score-big" style="color:${bandColor(pct)}">Band ${band}</div>
+        <div class="detail-band">${r.score}/${r.total} correct · ${pct}%</div>
+      </div>
+    </div>
+    <div class="progress-bar-outer">
+      <div class="progress-bar-inner" style="width:${pct}%;background:${bandColor(pct)}"></div>
+    </div>
+    ${answersHTML || '<p style="color:var(--muted);font-size:13px">Detailed answer breakdown not available for this result.</p>'}`;
+  panel.classList.add('open');
+  panel.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+</script>
+</body>
+</html>

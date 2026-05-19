@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Students — IELTS Master</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/auth.js" defer></script>
+<script src="../js/data.js" defer></script>
+<style>
+.search-bar { display:flex; gap:12px; margin-bottom:24px; }
+.search-bar input { flex:1; padding:10px 14px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; outline:none; transition:.2s; }
+.search-bar input:focus { border-color:var(--red); }
+.filter-select { padding:10px 14px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; outline:none; background:#fff; cursor:pointer; }
+.student-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; margin-bottom:32px; }
+.student-card { background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:20px; transition:.2s; }
+.student-card:hover { border-color:var(--red); box-shadow:0 4px 16px rgba(0,0,0,.08); }
+.sc-head { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.sc-avatar { width:44px; height:44px; border-radius:50%; background:var(--red); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; flex-shrink:0; }
+.sc-avatar img { width:44px; height:44px; border-radius:50%; object-fit:cover; }
+.sc-name { font-weight:700; font-size:15px; margin-bottom:2px; }
+.sc-email { font-size:12px; color:var(--muted); }
+.sc-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px; }
+.sc-stat { background:var(--bg); border-radius:8px; padding:8px; text-align:center; }
+.sc-stat-num { font-size:18px; font-weight:700; color:var(--text); }
+.sc-stat-label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+.sc-footer { display:flex; align-items:center; justify-content:space-between; padding-top:12px; border-top:1px solid var(--border); }
+.sc-joined { font-size:11px; color:var(--muted); }
+.empty-search { text-align:center; padding:60px 20px; color:var(--muted); }
+.empty-search .es-icon { font-size:48px; margin-bottom:12px; }
+/* Modal */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1000; align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal { background:#fff; border-radius:16px; width:100%; max-width:680px; max-height:85vh; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,.25); }
+.modal-head { display:flex; align-items:center; gap:14px; padding:20px 24px; border-bottom:1px solid var(--border); }
+.modal-head .m-avatar { width:48px; height:48px; border-radius:50%; background:var(--red); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:18px; flex-shrink:0; }
+.modal-head .m-avatar img { width:48px; height:48px; border-radius:50%; object-fit:cover; }
+.modal-title { font-size:18px; font-weight:700; }
+.modal-sub { font-size:13px; color:var(--muted); }
+.modal-close { margin-left:auto; background:none; border:none; font-size:22px; cursor:pointer; color:var(--muted); line-height:1; padding:4px; }
+.modal-body { overflow-y:auto; padding:20px 24px; flex:1; }
+.modal-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+.modal-stat { background:var(--bg); border-radius:10px; padding:12px; text-align:center; }
+.modal-stat-num { font-size:22px; font-weight:700; }
+.modal-stat-label { font-size:11px; color:var(--muted); margin-top:2px; }
+</style>
+</head>
+<body>
+<header class="app-header" id="app-header"></header>
+<main class="app-main" id="main">
+  <div class="page-title">Students 👥</div>
+  <div class="page-sub">All registered students and their progress</div>
+
+  <div class="search-bar">
+    <input type="text" id="search-input" placeholder="🔍  Search by name or email…" oninput="renderCards()">
+    <select class="filter-select" id="sort-select" onchange="renderCards()">
+      <option value="name">Sort: Name</option>
+      <option value="tests">Sort: Most Tests</option>
+      <option value="band">Sort: Best Band</option>
+      <option value="joined">Sort: Newest</option>
+    </select>
+  </div>
+
+  <div id="student-grid" class="student-grid"></div>
+</main>
+
+<!-- Student Detail Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-head" id="modal-head"></div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+let user, allStudents, allResults;
+
+document.addEventListener('DOMContentLoaded', () => {
+  user = Auth.requireAuth('teacher');
+  if (!user) return;
+  renderHeader('students.html');
+  allStudents = DB.getUsers().filter(u => u.role === 'student');
+  allResults  = DB.getResults();
+  renderCards();
+});
+
+function renderCards() {
+  const q    = document.getElementById('search-input').value.toLowerCase();
+  const sort = document.getElementById('sort-select').value;
+  let list   = allStudents.filter(s => s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q));
+
+  list.sort((a, b) => {
+    const ra = allResults[a.id] || [], rb = allResults[b.id] || [];
+    if (sort === 'name')   return a.name.localeCompare(b.name);
+    if (sort === 'tests')  return rb.length - ra.length;
+    if (sort === 'band') {
+      const ba = ra.length ? Math.max(...ra.map(r => bandScore(r.score,r.total))) : 0;
+      const bb = rb.length ? Math.max(...rb.map(r => bandScore(r.score,r.total))) : 0;
+      return bb - ba;
+    }
+    if (sort === 'joined') return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+
+  const grid = document.getElementById('student-grid');
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-search" style="grid-column:1/-1">
+      <div class="es-icon">🔍</div>
+      <h3>No students found</h3>
+      <p>Try a different search term.</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(s => {
+    const res   = allResults[s.id] || [];
+    const rCt   = res.filter(r => r.type === 'reading').length;
+    const lCt   = res.filter(r => r.type === 'listening').length;
+    const best  = res.length ? Math.max(...res.map(r => bandScore(r.score,r.total))) : null;
+    const initials = s.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+    const avatarHTML = s.picture
+      ? `<img src="${s.picture}" alt="${s.name}">`
+      : initials;
+    const joined = s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
+    return `<div class="student-card">
+      <div class="sc-head">
+        <div class="sc-avatar">${avatarHTML}</div>
+        <div>
+          <div class="sc-name">${s.name}</div>
+          <div class="sc-email">${s.email}</div>
+        </div>
+        <span class="badge ${s.provider==='google'?'badge-blue':'badge-gray'}" style="margin-left:auto">${s.provider==='google'?'Google':'Email'}</span>
+      </div>
+      <div class="sc-stats">
+        <div class="sc-stat"><div class="sc-stat-num">${rCt}</div><div class="sc-stat-label">Reading</div></div>
+        <div class="sc-stat"><div class="sc-stat-num">${lCt}</div><div class="sc-stat-label">Listening</div></div>
+        <div class="sc-stat"><div class="sc-stat-num" style="color:${best?bandColor(pctScore(best*7/9*1,9)):''}">${best !== null ? 'B'+best : '—'}</div><div class="sc-stat-label">Best Band</div></div>
+      </div>
+      <div class="sc-footer">
+        <span class="sc-joined">Joined ${joined}</span>
+        <button class="btn btn-outline btn-sm" onclick="openModal('${s.id}')">View Results</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openModal(sid) {
+  const s   = allStudents.find(x => x.id === sid);
+  const res = allResults[sid] || [];
+  if (!s) return;
+
+  const initials = s.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+  const avatarHTML = s.picture ? `<img src="${s.picture}" alt="${s.name}">` : initials;
+  const rCt  = res.filter(r => r.type==='reading').length;
+  const lCt  = res.filter(r => r.type==='listening').length;
+  const best = res.length ? Math.max(...res.map(r => bandScore(r.score,r.total))) : null;
+  const avg  = res.length ? (res.reduce((s,r)=>s+bandScore(r.score,r.total),0)/res.length).toFixed(1) : null;
+
+  document.getElementById('modal-head').innerHTML = `
+    <div class="m-avatar">${avatarHTML}</div>
+    <div>
+      <div class="modal-title">${s.name}</div>
+      <div class="modal-sub">${s.email} · ${s.provider==='google'?'Google':'Email'} account</div>
+    </div>
+    <button class="modal-close" onclick="closeModal()">✕</button>`;
+
+  document.getElementById('modal-body').innerHTML = `
+    <div class="modal-stats">
+      <div class="modal-stat"><div class="modal-stat-num">${res.length}</div><div class="modal-stat-label">Total Tests</div></div>
+      <div class="modal-stat"><div class="modal-stat-num">${rCt}</div><div class="modal-stat-label">Reading</div></div>
+      <div class="modal-stat"><div class="modal-stat-num">${lCt}</div><div class="modal-stat-label">Listening</div></div>
+      <div class="modal-stat"><div class="modal-stat-num" style="color:var(--green)">${best !== null ? 'Band '+best : '—'}</div><div class="modal-stat-label">Best Band</div></div>
+    </div>
+    ${res.length === 0
+      ? `<div class="empty-state"><div class="es-icon">📋</div><h3>No tests yet</h3><p>This student hasn't taken any tests.</p></div>`
+      : `<div class="table-wrap"><table>
+          <thead><tr><th>Test</th><th>Type</th><th>Score</th><th>Band</th><th>Date</th></tr></thead>
+          <tbody>
+          ${[...res].reverse().map(r => {
+            const band = bandScore(r.score, r.total);
+            const pct  = pctScore(r.score, r.total);
+            return `<tr>
+              <td style="font-weight:600">${r.test}</td>
+              <td><span class="badge ${r.type==='reading'?'badge-red':'badge-blue'}">${r.type==='reading'?'📖 Reading':'🎧 Listening'}</span></td>
+              <td>${r.score}/${r.total}</td>
+              <td style="font-weight:700;color:${bandColor(pct)}">Band ${band}</td>
+              <td style="color:var(--muted)">${r.date}</td>
+            </tr>`;
+          }).join('')}
+          </tbody>
+         </table></div>`
+    }`;
+
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal-overlay')) {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>

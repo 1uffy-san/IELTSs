@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Test — IELTS Master</title>
+<link rel="stylesheet" href="../css/style.css">
+<script src="../js/auth.js" defer></script>
+<script src="../js/data.js" defer></script>
+<style>
+.test-layout { display:grid; grid-template-columns:1fr 1fr; gap:24px; align-items:start; }
+@media(max-width:800px) { .test-layout { grid-template-columns:1fr; } }
+
+.passage-card { background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:28px 32px; max-height:75vh; overflow-y:auto; position:sticky; top:20px; line-height:1.8; }
+.passage-card h2 { font-size:20px; font-weight:800; margin-bottom:6px; }
+.passage-card .subtitle { color:var(--muted); font-size:13px; margin-bottom:18px; }
+
+.questions-card { background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:28px 32px; }
+.questions-card h2 { font-size:16px; font-weight:700; margin-bottom:20px; }
+
+.q-block { margin-bottom:20px; }
+.q-block label { font-size:14px; line-height:1.6; display:block; margin-bottom:8px; }
+.q-blank { display:inline-block; min-width:140px; border:none; border-bottom:2px solid var(--red); padding:2px 8px; font-size:14px; font-family:inherit; outline:none; background:transparent; text-align:center; }
+.q-blank:focus { border-bottom-color:#1a73e8; }
+
+.timer-bar { position:fixed; top:0; left:0; right:0; height:4px; background:var(--border); z-index:999; }
+.timer-fill { height:100%; background:var(--red); transition:width 1s linear; }
+.timer-badge { position:fixed; top:10px; right:16px; background:#fff; border:1.5px solid var(--border); border-radius:8px; padding:6px 14px; font-size:13px; font-weight:700; z-index:999; box-shadow:0 2px 8px rgba(0,0,0,.1); }
+.timer-badge.urgent { color:var(--red); border-color:var(--red); }
+
+.submit-row { margin-top:24px; display:flex; gap:12px; align-items:center; }
+</style>
+</head>
+<body>
+<div class="timer-bar"><div class="timer-fill" id="timer-fill"></div></div>
+<div class="timer-badge" id="timer-badge">--:--</div>
+
+<header class="app-header" id="app-header"></header>
+<main class="app-main" id="main">
+  <div id="loading" style="text-align:center;padding:60px;color:var(--muted)">Loading test…</div>
+</main>
+
+<script>
+let user, test, totalSeconds, elapsed = 0, timerInterval;
+
+document.addEventListener('DOMContentLoaded', () => {
+  user = Auth.requireAuth('student');
+  if (!user) return;
+  renderHeader('tests.html');
+
+  const params = new URLSearchParams(window.location.search);
+  const id     = params.get('id');
+  if (!id) { document.getElementById('loading').textContent = 'No test ID provided.'; return; }
+
+  test = DB.getCustomTest(id);
+  if (!test) { document.getElementById('loading').textContent = 'Test not found.'; return; }
+
+  renderTest();
+  startTimer(test.timeLimitMinutes * 60);
+});
+
+function renderTest() {
+  const isReading = test.type === 'reading';
+  document.title  = test.title + ' — IELTS Master';
+
+  const questionsHTML = test.questions.map((q, i) => `
+    <div class="q-block">
+      <label>
+        <strong>Q${i+1}.</strong>
+        ${q.stem ? q.stem + ' ' : ''}
+        <input type="text" class="q-blank" id="ans_${i}" placeholder="answer" autocomplete="off" spellcheck="false">
+        ${q.after ? ' ' + q.after : ''}
+      </label>
+    </div>`).join('');
+
+  const questionsCard = `
+    <div class="questions-card">
+      <h2>${isReading ? '📝 Complete the sentences' : '🎧 Write your answers'}</h2>
+      ${questionsHTML}
+      <div class="submit-row">
+        <button class="btn btn-primary" onclick="submitTest()">Submit Test</button>
+        <span style="font-size:13px;color:var(--muted)">${test.questions.length} question${test.questions.length!==1?'s':''}</span>
+      </div>
+    </div>`;
+
+  if (isReading && test.passage) {
+    document.getElementById('main').innerHTML = `
+      <div class="page-title" style="margin-bottom:20px">${test.title}</div>
+      <div class="test-layout">
+        <div class="passage-card">${test.passage}</div>
+        ${questionsCard}
+      </div>`;
+  } else {
+    document.getElementById('main').innerHTML = `
+      <div class="page-title" style="margin-bottom:20px">${test.title}</div>
+      <div style="max-width:640px">${questionsCard}</div>`;
+  }
+}
+
+function startTimer(seconds) {
+  totalSeconds = seconds;
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    elapsed++;
+    updateTimerDisplay();
+    if (elapsed >= totalSeconds) {
+      clearInterval(timerInterval);
+      alert('Time is up! Your answers will be submitted now.');
+      submitTest();
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const remaining = Math.max(0, totalSeconds - elapsed);
+  const m = Math.floor(remaining / 60);
+  const s = remaining % 60;
+  const badge = document.getElementById('timer-badge');
+  const fill  = document.getElementById('timer-fill');
+  badge.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  badge.className = 'timer-badge' + (remaining < 60 ? ' urgent' : '');
+  fill.style.width = (((totalSeconds - remaining) / totalSeconds) * 100) + '%';
+}
+
+function submitTest() {
+  clearInterval(timerInterval);
+
+  const answers = test.questions.map((_, i) => {
+    const el = document.getElementById('ans_' + i);
+    return el ? el.value.trim() : '';
+  });
+
+  const correctAnswers = test.questions.map(q => q.answer);
+  const score = answers.filter((a, i) => a.toLowerCase() === correctAnswers[i].toLowerCase()).length;
+  const total = test.questions.length;
+
+  const result = {
+    type:           test.type,
+    test:           test.title,
+    score,
+    total,
+    date:           new Date().toLocaleDateString(),
+    answers,
+    correctAnswers,
+    explanations:   test.questions.map(q => q.explanation || ''),
+  };
+
+  DB.addResult(user.id, result);
+
+  // Build result detail URL (reuse existing result-detail.html via index)
+  const allResults = DB.getUserResults(user.id);
+  const idx = allResults.length - 1;
+  window.location.href = `result-detail.html?uid=${user.id}&idx=${idx}`;
+}
+</script>
+</body>
+</html>
