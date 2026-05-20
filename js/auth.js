@@ -47,8 +47,10 @@ const Auth = {
     const isTeacher = password === TEACHER_CODE;
     const validRole = isTeacher ? "teacher" : "student";
 
+    // Teachers get a fixed deterministic password so they can log in later
+    // We derive it from their email so it's consistent
     const actualPassword = isTeacher
-      ? "TeacherAcc_" + Math.random().toString(36).slice(2) + "!Aa1"
+      ? "TC_" + btoa(email).replace(/[^a-zA-Z0-9]/g, "").slice(0, 12) + "_Aa1!"
       : password;
 
     const { data, error } = await _supabase.auth.signUp({
@@ -60,43 +62,70 @@ const Auth = {
     if (!data.user)
       return { ok: false, error: "Registration failed. Please try again." };
 
-    const { error: profileErr } = await _supabase.from("profiles").insert({
-      id: data.user.id,
-      email,
-      name,
-      role: validRole,
-      provider: "email",
-    });
-    if (profileErr) return { ok: false, error: profileErr.message };
+    // Check if profile already exists (e.g., email already registered)
+    const { data: existing } = await _supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", data.user.id)
+      .single();
 
-    if (isTeacher) {
-      await _supabase.auth.signOut();
-      return { ok: true, isTeacher: true, email };
+    if (!existing) {
+      const { error: profileErr } = await _supabase.from("profiles").insert({
+        id: data.user.id,
+        email,
+        name,
+        role: validRole,
+        provider: "email",
+      });
+      if (profileErr) return { ok: false, error: profileErr.message };
     }
 
-    return { ok: true, isTeacher: false };
+    // Sign out after registration so user confirms email first
+    await _supabase.auth.signOut();
+
+    return { ok: true, isTeacher };
   },
 
   async loginEmail(email, password) {
-    if (password === TEACHER_CODE) {
-      const { data: profiles, error: pErr } = await _supabase
+    const isTeacherCode = password === TEACHER_CODE;
+
+    if (isTeacherCode) {
+      // Verify a teacher profile exists for this email
+      const { data: profile, error: pErr } = await _supabase
         .from("profiles")
         .select("*")
         .eq("email", email)
         .eq("role", "teacher")
         .single();
-      if (pErr || !profiles) {
+
+      if (pErr || !profile) {
         return {
           ok: false,
           error:
-            "No teacher account found for this email. Please sign up first using the teacher code.",
+            "No teacher account found for this email. Please register first using the teacher code as your password.",
         };
       }
-      const { error: otpErr } = await _supabase.auth.signInWithOtp({ email });
-      if (otpErr) return { ok: false, error: otpErr.message };
-      return { ok: true, isTeacher: true, magicLink: true };
+
+      // Derive the same deterministic password used at registration
+      const derivedPassword =
+        "TC_" + btoa(email).replace(/[^a-zA-Z0-9]/g, "").slice(0, 12) + "_Aa1!";
+
+      const { error } = await _supabase.auth.signInWithPassword({
+        email,
+        password: derivedPassword,
+      });
+
+      if (error) {
+        // Fallback: send magic link if password doesn't work (old accounts)
+        const { error: otpErr } = await _supabase.auth.signInWithOtp({ email });
+        if (otpErr) return { ok: false, error: otpErr.message };
+        return { ok: true, isTeacher: true, magicLink: true };
+      }
+
+      return { ok: true, isTeacher: true };
     }
 
+    // Normal student login
     const { error } = await _supabase.auth.signInWithPassword({
       email,
       password,
@@ -105,7 +134,61 @@ const Auth = {
     return { ok: true };
   },
 
-  // ── Google One-Tap credential handler ──
+  // ── Google OAuth — redirect flow (reliable across all browsers) ──
+  async loginWithGoogle(role) {
+    try {
+      // Store the intended role so we can set it after redirect
+      if (role) sessionStorage.setItem("pendingGoogleRole", role);
+
+      const { error } = await _supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: window.location.origin + "/pages/dashboard.html",
+        },
+      });
+      if (error) return { ok: false, error: error.message };
+      // Browser will redirect — no return value needed
+      return { ok: true };
+    } catch (e) {
+      console.error("loginWithGoogle error:", e);
+      return { ok: false, error: "Google sign-in failed. Please try again." };
+    }
+  },
+
+  // ── Called on dashboard after Google OAuth redirect ──
+  async handleGoogleRedirect() {
+    try {
+      const {
+        data: { session },
+      } = await _supabase.auth.getSession();
+      if (!session) return;
+
+      const user = session.user;
+      const role = sessionStorage.getItem("pendingGoogleRole") || "student";
+      sessionStorage.removeItem("pendingGoogleRole");
+
+      const { data: existing } = await _supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", user.id)
+        .single();
+
+      if (!existing) {
+        await _supabase.from("profiles").insert({
+          id: user.id,
+          email: user.email,
+          name: user.user_metadata?.full_name || user.email,
+          picture: user.user_metadata?.avatar_url || null,
+          role,
+          provider: "google",
+        });
+      }
+    } catch (e) {
+      console.error("handleGoogleRedirect error:", e);
+    }
+  },
+
+  // Keep old One-Tap handler for backward compatibility
   async handleGoogleCredential(response, role) {
     try {
       const { data, error } = await _supabase.auth.signInWithIdToken({

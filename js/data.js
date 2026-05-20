@@ -116,19 +116,19 @@ const DB = {
     }
   },
 
-  async saveTest(testObj) {
-    try {
-      const { error } = await _supabase.from("tests").insert(testObj);
-      if (error) {
-        console.error("saveTest error:", error);
-        return { ok: false, error: error.message };
-      }
-      return { ok: true };
-    } catch (e) {
-      console.error("saveTest error:", e);
-      return { ok: false, error: e.message };
+ async saveTest(testObj) {
+  try {
+    const { error } = await _supabase.from("tests").insert(testObj);
+    if (error) {
+      console.error("saveTest error:", error.message, error.details, error.hint);
+      return { ok: false, error: error.message };
     }
-  },
+    return { ok: true };
+  } catch (e) {
+    console.error("saveTest error:", e);
+    return { ok: false, error: e.message };
+  }
+},
 
   async deleteTest(testId) {
     try {

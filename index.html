@@ -8,7 +8,6 @@
     <script src="./js/supabase-config.js"></script>
     <script src="./js/auth.js"></script>
     <script src="./js/data.js"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="stylesheet" href="./css/style.css" />
     <style>
       body { background:linear-gradient(135deg,#1a1a2e 0%,#922b21 100%); display:flex; align-items:center; justify-content:center; min-height:100vh; }
@@ -21,8 +20,8 @@
       .auth-tabs { display:flex; background:#f3f4f6; border-radius:8px; padding:4px; margin-bottom:26px; }
       .auth-tab  { flex:1; padding:9px; border-radius:6px; border:none; background:none; cursor:pointer; font-size:14px; font-weight:600; font-family:inherit; color:var(--muted); transition:.2s; }
       .auth-tab.active { background:#fff; color:var(--text); box-shadow:0 1px 4px rgba(0,0,0,.1); }
-      .google-btn { width:100%; padding:12px; border:1.5px solid #4285f4; background:#fff; color:#3c4043; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; transition:.2s; font-family:inherit; }
-      .google-btn:hover { background:#f8f9fa; border-color:#1a73e8; }
+      .google-btn { width:100%; padding:12px; border:1.5px solid #dadce0; background:#fff; color:#3c4043; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; transition:.2s; font-family:inherit; }
+      .google-btn:hover { background:#f8f9fa; box-shadow:0 1px 4px rgba(0,0,0,.15); }
       .google-btn svg { width:20px; height:20px; flex-shrink:0; }
       .role-selector { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px; }
       .role-option { border:2px solid var(--border); border-radius:8px; padding:14px 10px; text-align:center; cursor:pointer; transition:.2s; }
@@ -54,7 +53,7 @@
 
         <!-- LOGIN -->
         <div id="panel-login">
-          <button class="google-btn" onclick="triggerGoogleLogin('student')">
+          <button class="google-btn" onclick="doGoogleLogin('student')">
             <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
             Sign in with Google
           </button>
@@ -75,7 +74,7 @@
 
         <!-- REGISTER -->
         <div id="panel-register" style="display:none">
-          <button class="google-btn" onclick="triggerGoogleLogin(selectedRole)">
+          <button class="google-btn" onclick="doGoogleLogin(selectedRole)">
             <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
             Register with Google
           </button>
@@ -89,7 +88,7 @@
             <input type="email" id="reg-email" class="form-control" placeholder="your@email.com">
           </div>
           <div class="form-group">
-            <label>Password</label>
+            <label>Password <span id="pw-hint" style="font-size:11px;color:var(--muted)">(min. 6 characters)</span></label>
             <input type="password" id="reg-password" class="form-control" placeholder="At least 6 characters">
           </div>
           <div class="form-group">
@@ -119,24 +118,23 @@
       window.addEventListener('DOMContentLoaded', async () => {
         const u = await Auth.currentUser();
         if (u) redirect();
-        if (typeof google !== 'undefined' && google.accounts) {
-          google.accounts.id.initialize({
-            client_id: GOOGLE_CLIENT_ID,
-            callback: onGoogleCredential,
-            auto_select: false,
-          });
-        }
       });
 
       function redirect() { window.location.href = 'pages/dashboard.html'; }
 
       let selectedRole = 'student';
-      let pendingGoogleRole = 'student';
 
       function selectRole(r) {
         selectedRole = r;
         document.getElementById('role-student').classList.toggle('selected', r === 'student');
         document.getElementById('role-teacher').classList.toggle('selected', r === 'teacher');
+        // Update password hint for teacher role
+        const hint = document.getElementById('pw-hint');
+        if (hint) {
+          hint.textContent = r === 'teacher'
+            ? '(enter the teacher code)'
+            : '(min. 6 characters)';
+        }
       }
 
       function switchTab(tab) {
@@ -157,20 +155,12 @@
         document.getElementById('alert-box').className = 'alert hidden';
       }
 
-      function triggerGoogleLogin(role) {
-        pendingGoogleRole = role || 'student';
-        if (typeof google !== 'undefined' && google.accounts) {
-          google.accounts.id.prompt();
-        } else {
-          showAlert('Google Sign-In is not available. Please use email instead.');
-        }
-      }
-
-      async function onGoogleCredential(response) {
-        showAlert('Signing in with Google…', 'info');
-        const result = await Auth.handleGoogleCredential(response, pendingGoogleRole);
-        if (result.ok) redirect();
-        else showAlert(result.error);
+      // ── Google login via OAuth redirect (works in all browsers) ──
+      async function doGoogleLogin(role) {
+        showAlert('Redirecting to Google…', 'info');
+        const result = await Auth.loginWithGoogle(role);
+        if (!result.ok) showAlert(result.error);
+        // If ok, browser is redirecting — nothing more to do
       }
 
       async function doEmailLogin() {
@@ -181,12 +171,11 @@
         const result = await Auth.loginEmail(email, password);
         if (result.ok) {
           if (result.magicLink) {
-            showAlert('Check your email for a magic link to complete sign-in.', 'info');
+            showAlert('Check your email for a magic link to complete teacher sign-in.', 'info');
           } else {
             redirect();
           }
         } else {
-          // Give a helpful message if email not confirmed
           if (result.error.includes('Email not confirmed')) {
             showAlert('Please check your email and click the confirmation link first, then try logging in again.');
           } else {
@@ -195,24 +184,38 @@
         }
       }
 
+
       async function doRegister() {
         const name     = document.getElementById('reg-name').value.trim();
         const email    = document.getElementById('reg-email').value.trim();
         const password = document.getElementById('reg-password').value;
-        if (!name)               { showAlert('Please enter your full name.');             return; }
-        if (!email)              { showAlert('Please enter your email.');                 return; }
-        if (password.length < 6) { showAlert('Password must be at least 6 characters.'); return; }
 
-        // Teacher uses teacher code as password
-        const finalPassword = selectedRole === 'teacher' ? 'Gitpush4611' : password;
+        if (!name)  { showAlert('Please enter your full name.');   return; }
+        if (!email) { showAlert('Please enter your email.');       return; }
+
+        const isTeacher = selectedRole === 'teacher';
+        if (isTeacher && password !== 'Gitpush4611') {
+          showAlert('Incorrect teacher code. Please enter the code provided by your school.');
+          return;
+        }
+        if (!isTeacher && password.length < 6) {
+          showAlert('Password must be at least 6 characters.');
+          return;
+        }
 
         showAlert('Creating account…', 'info');
-        const result = await Auth.registerEmail(name, email, finalPassword);
+        const result = await Auth.registerEmail(name, email, password);
         if (result.ok) {
           if (result.isTeacher) {
-            showAlert('Teacher account created! Check your email to confirm, then log in with your teacher code as the password.', 'info');
+            showAlert(
+              'Teacher account created! Check your email to confirm it, then log in with your email + teacher code.',
+              'info'
+            );
           } else {
-            showAlert('Account created! Check your email inbox and click the confirmation link, then sign in.', 'info');
+            showAlert(
+              'Account created! Check your email inbox and click the confirmation link, then sign in.',
+              'info'
+            );
           }
           switchTab('login');
         } else {
