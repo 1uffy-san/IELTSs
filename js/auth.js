@@ -101,12 +101,11 @@ const Auth = {
       if (pErr || !profile) {
         return {
           ok: false,
-          error:
-            "No teacher account found for this email. Please register first using the teacher code as your password.",
+          error: "No teacher account found for this email. Please register first.",
         };
       }
 
-      // Derive the same deterministic password used at registration
+      // Derive the deterministic password used at registration
       const derivedPassword =
         "TC_" + btoa(email).replace(/[^a-zA-Z0-9]/g, "").slice(0, 12) + "_Aa1!";
 
@@ -116,10 +115,7 @@ const Auth = {
       });
 
       if (error) {
-        // Fallback: send magic link if password doesn't work (old accounts)
-        const { error: otpErr } = await _supabase.auth.signInWithOtp({ email });
-        if (otpErr) return { ok: false, error: otpErr.message };
-        return { ok: true, isTeacher: true, magicLink: true };
+        return { ok: false, error: "Incorrect teacher code. Please try again." };
       }
 
       return { ok: true, isTeacher: true };

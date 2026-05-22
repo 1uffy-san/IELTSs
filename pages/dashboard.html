@@ -21,6 +21,17 @@
 
     <script>
       document.addEventListener("DOMContentLoaded", async () => {
+        // One-time teacher password migration via reset link
+        const _params = new URLSearchParams(window.location.search);
+        const _setPwd = _params.get("setPwd");
+        if (_setPwd) {
+          // Supabase auto-signs the user in after clicking the reset link —
+          // we just update their password to the derived value so future
+          // logins work instantly without any email step.
+          const { error: _pwErr } = await _supabase.auth.updateUser({ password: decodeURIComponent(_setPwd) });
+          if (!_pwErr) history.replaceState({}, "", window.location.pathname);
+        }
+
         // Optional auth — if not logged in, show a guest landing instead of redirecting
         const user = await Auth.initUserOptional();
         renderHeader("dashboard.html");
