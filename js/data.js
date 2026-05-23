@@ -5,7 +5,7 @@ const DB = {
         .from("results")
         .select("*")
         .eq("user_id", userId)
-        .order("created_at", { ascending: true });
+        .order("id", { ascending: true });
       if (error) {
         console.error("getUserResults error:", error);
         return [];
@@ -45,7 +45,7 @@ const DB = {
       const { data, error } = await _supabase
         .from("profiles")
         .select("*")
-        .order("created_at", { ascending: true });
+        .order("id", { ascending: true });
       if (error) {
         console.error("getUsers error:", error);
         return [];
@@ -62,7 +62,7 @@ const DB = {
       const { data, error } = await _supabase
         .from("results")
         .select("*")
-        .order("created_at", { ascending: true });
+        .order("id", { ascending: true });
       if (error) {
         console.error("getAllResults error:", error);
         return {};
