@@ -33,6 +33,64 @@
       .mode-card .mc-label { font-size:14px; font-weight:700; margin-bottom:4px; }
       .mode-card .mc-sub { font-size:12px; color:var(--muted); }
       .url-preview { background:#f8f9fa; border:1.5px solid var(--border); border-radius:8px; padding:12px 16px; font-size:13px; color:var(--muted); margin-top:8px; word-break:break-all; }
+
+      /* ── Answer key builder ── */
+      .answer-key-section { margin-top:8px; }
+      .answer-key-head {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 14px;
+      }
+      .answer-key-head h3 { font-size:15px; font-weight:700; margin:0; }
+      .answer-key-note { font-size:12px; color:var(--muted); }
+      .answer-key-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 10px;
+      }
+      .ak-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--bg, #f8f9fa);
+        border-radius: 8px;
+        padding: 8px 10px;
+      }
+      .ak-num {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--muted);
+        min-width: 26px;
+        text-align: right;
+        flex-shrink: 0;
+      }
+      .ak-input {
+        flex: 1;
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        padding: 6px 8px;
+        font-size: 13px;
+        font-family: inherit;
+        outline: none;
+        background: #fff;
+        transition: .18s;
+      }
+      .ak-input:focus { border-color: var(--red); }
+      .ak-input.filled { background:#f0fdf4; border-color:#86efac; }
+
+      .ak-helper {
+        background: #fffbeb;
+        border: 1.5px solid #fcd34d;
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        color: #92400e;
+        margin-bottom: 16px;
+      }
+      .ak-filled-count {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 10px;
+      }
     </style>
   </head>
   <body>
@@ -68,7 +126,8 @@
             </div>
             <div class="form-group" style="margin:0">
               <label>Number of Questions</label>
-              <input type="number" id="test-qcount" class="form-control" value="13" min="1" max="100">
+              <input type="number" id="test-qcount" class="form-control" value="13" min="1" max="100"
+                oninput="rebuildAnswerKey()">
             </div>
           </div>
         </div>
@@ -114,6 +173,23 @@
           </div>
         </div>
 
+        <!-- ANSWER KEY CARD -->
+        <div class="form-card">
+          <div class="answer-key-head">
+            <h2 style="margin:0">🗝️ Answer Key</h2>
+            <span class="answer-key-note">Used for auto-grading student results</span>
+          </div>
+
+          <div class="ak-helper">
+            ℹ️ Enter the correct answer for each question. Answers are case-insensitive (e.g. "TRUE" = "true"). Leave blank to skip auto-grading for that question.
+          </div>
+
+          <div class="answer-key-grid" id="answer-key-grid">
+            <!-- built by rebuildAnswerKey() -->
+          </div>
+          <div class="ak-filled-count" id="ak-filled-count"></div>
+        </div>
+
         <div id="form-alert" class="alert hidden"></div>
         <button class="btn btn-primary" onclick="saveTest()" style="min-width:160px">💾 Save Test</button>
       </div>
@@ -134,8 +210,55 @@
         const user = await Auth.initUser('teacher');
         if (!user) return;
         renderHeader('add-tests.html');
+        rebuildAnswerKey(); // build with default qcount
       });
 
+      /* ── Answer Key builder ── */
+      function rebuildAnswerKey() {
+        const n = parseInt(document.getElementById('test-qcount').value) || 13;
+        const grid = document.getElementById('answer-key-grid');
+        grid.innerHTML = '';
+        for (let i = 0; i < n; i++) {
+          const row = document.createElement('div');
+          row.className = 'ak-row';
+          row.innerHTML = `
+            <div class="ak-num">Q${i + 1}</div>
+            <input type="text" class="ak-input" id="ak_${i}"
+              placeholder="correct answer"
+              autocomplete="off" spellcheck="false"
+              oninput="onAkInput(${i}, this)">`;
+          grid.appendChild(row);
+        }
+        updateAkCount();
+      }
+
+      function onAkInput(i, el) {
+        el.classList.toggle('filled', el.value.trim().length > 0);
+        updateAkCount();
+      }
+
+      function updateAkCount() {
+        const n = parseInt(document.getElementById('test-qcount').value) || 13;
+        let filled = 0;
+        for (let i = 0; i < n; i++) {
+          const el = document.getElementById('ak_' + i);
+          if (el && el.value.trim()) filled++;
+        }
+        document.getElementById('ak-filled-count').textContent =
+          `${filled} of ${n} answers entered`;
+      }
+
+      function collectAnswerKey() {
+        const n = parseInt(document.getElementById('test-qcount').value) || 13;
+        const keys = [];
+        for (let i = 0; i < n; i++) {
+          const el = document.getElementById('ak_' + i);
+          keys.push(el ? el.value.trim() : '');
+        }
+        return keys;
+      }
+
+      /* ── Mode selector ── */
       function selectMode(mode) {
         currentMode = mode;
         document.getElementById('mode-url').classList.toggle('selected', mode === 'url');
@@ -173,6 +296,7 @@
         document.getElementById('form-alert').className = 'alert hidden';
       }
 
+      /* ── Save test ── */
       async function saveTest() {
         hideAlert();
         const title   = document.getElementById('test-title').value.trim();
@@ -180,23 +304,20 @@
         const qcount  = parseInt(document.getElementById('test-qcount').value) || 13;
         const url     = document.getElementById('test-url').value.trim();
         const html    = document.getElementById('test-html').value.trim();
+        const answerKey = collectAnswerKey();
 
         if (!title) { showAlert('Please enter a test title.'); return; }
-
-        if (currentMode === 'url' && !url) {
-          showAlert('Please paste a URL for the test.'); return;
-        }
-        if (currentMode === 'html' && !html) {
-          showAlert('Please paste the HTML for the test.'); return;
-        }
+        if (currentMode === 'url' && !url)  { showAlert('Please paste a URL for the test.'); return; }
+        if (currentMode === 'html' && !html){ showAlert('Please paste the HTML for the test.'); return; }
 
         const testObj = {
           title,
           type,
           question_count: qcount,
           mode: currentMode,
-          url:  currentMode === 'url'  ? url  : null,
-          html: currentMode === 'html' ? html : null,
+          url:        currentMode === 'url'  ? url  : null,
+          html:       currentMode === 'html' ? html : null,
+          answer_key: answerKey,          // ← stored in Supabase
           created_at: new Date().toISOString(),
         };
 
@@ -208,6 +329,7 @@
         document.getElementById('test-url').value   = '';
         document.getElementById('test-html').value  = '';
         document.getElementById('url-preview').style.display = 'none';
+        rebuildAnswerKey();
 
         const msg = document.getElementById('success-msg');
         msg.classList.remove('hidden');
@@ -215,6 +337,7 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
 
+      /* ── Manage tab ── */
       async function renderManage() {
         const tests = await DB.getTests();
         const el = document.getElementById('manage-list');
@@ -223,22 +346,26 @@
           return;
         }
         el.innerHTML = `<div class="custom-tests-list">
-          ${[...tests].reverse().map(t => `
+          ${[...tests].reverse().map(t => {
+            const keyCount = (t.answer_key || []).filter(a => a && a.trim()).length;
+            const total    = t.question_count || 0;
+            return `
             <div class="ct-item">
               <div class="ct-info">
                 <h3>${t.title}</h3>
                 <div class="ct-meta">
                   <span class="badge ${t.type === 'reading' ? 'badge-red' : 'badge-blue'}">${t.type === 'reading' ? '📖 Reading' : '🎧 Listening'}</span>
-                  &nbsp;${t.question_count || '?'} questions ·
-                  ${t.mode === 'url' ? '🔗 URL: ' + (t.url || '').slice(0, 50) + '...' : '📄 Inline HTML'}
-                  · Added ${new Date(t.created_at).toLocaleDateString()}
+                  &nbsp;${total} questions ·
+                  ${t.mode === 'url' ? '🔗 URL' : '📄 Inline HTML'} ·
+                  🗝️ ${keyCount}/${total} answers keyed ·
+                  Added ${new Date(t.created_at).toLocaleDateString()}
                 </div>
               </div>
               <div class="ct-actions">
                 <a href="${t.mode === 'url' ? t.url : 'data:text/html;charset=utf-8,' + encodeURIComponent(t.html || '')}" target="_blank" class="btn btn-outline btn-sm">👁 Preview</a>
                 <button class="btn-danger" onclick="deleteTest('${t.id}')">🗑 Delete</button>
               </div>
-            </div>`).join('')}
+            </div>`}).join('')}
         </div>`;
       }
 

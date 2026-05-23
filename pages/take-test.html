@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Take Test — IELTS Master</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-config.js"></script>
+    <script src="../js/auth.js" defer></script>
+    <script src="../js/data.js" defer></script>
+    <style>
+      .take-test-wrap {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 60px);
+      }
+      .top-bar {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 24px;
+        background: #fff;
+        border-bottom: 1.5px solid var(--border);
+        flex-shrink: 0;
+        flex-wrap: wrap;
+      }
+      .top-bar-title {
+        font-size: 15px;
+        font-weight: 700;
+        flex: 1;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .top-bar-badge { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+
+      /* Timer */
+      .timer-pill {
+        display: flex; align-items: center; gap: 6px;
+        background: var(--bg, #f8f9fa);
+        border: 1.5px solid var(--border);
+        border-radius: 20px; padding: 6px 14px;
+        font-size: 14px; font-weight: 700;
+        font-variant-numeric: tabular-nums; flex-shrink: 0;
+      }
+      .timer-pill.urgent { background:#fef2f2; border-color:var(--red); color:var(--red); }
+      .timer-dot { width:8px; height:8px; border-radius:50%; background:var(--green,#16a34a); animation:blink 1s infinite; }
+      .timer-pill.urgent .timer-dot { background:var(--red); }
+      @keyframes blink { 50%{opacity:.3} }
+
+      /* Progress */
+      .progress-strip { height:3px; background:var(--border); flex-shrink:0; }
+      .progress-fill  { height:100%; background:var(--red); transition:width 1s linear; }
+
+      /* Answer panel */
+      .answer-panel {
+        width:360px; min-width:280px; max-width:400px;
+        background:#fff; border-left:1.5px solid var(--border);
+        display:flex; flex-direction:column; flex-shrink:0; overflow:hidden;
+      }
+      .answer-panel-head {
+        padding:16px 20px 12px; border-bottom:1px solid var(--border);
+        font-weight:700; font-size:14px;
+        background:var(--bg,#f8f9fa); flex-shrink:0;
+      }
+      .answer-panel-head small { font-weight:400; color:var(--muted); font-size:12px; display:block; margin-top:2px; }
+      .answers-scroll { overflow-y:auto; flex:1; padding:14px 16px; display:flex; flex-direction:column; gap:8px; }
+      .q-row { display:flex; align-items:center; gap:8px; }
+      .q-num { font-size:12px; font-weight:700; color:var(--muted); min-width:28px; text-align:right; }
+      .q-input {
+        flex:1; border:1.5px solid var(--border); border-radius:7px;
+        padding:7px 10px; font-size:13px; font-family:inherit;
+        outline:none; transition:.18s; background:#fff;
+      }
+      .q-input:focus  { border-color:var(--red); }
+      .q-input.filled { background:#f0fdf4; border-color:#86efac; }
+
+      .submit-footer { padding:14px 16px; border-top:1px solid var(--border); background:#fff; flex-shrink:0; }
+      .filled-count  { font-size:12px; color:var(--muted); margin-bottom:8px; }
+
+      /* Content area */
+      .content-area { display:flex; flex:1; overflow:hidden; }
+      .iframe-wrap  { flex:1; overflow:hidden; position:relative; }
+      .test-iframe  { width:100%; height:100%; border:none; display:block; }
+      .iframe-cover {
+        position:absolute; inset:0; display:flex;
+        align-items:center; justify-content:center;
+        flex-direction:column; gap:12px;
+        background:var(--bg,#f8f9fa); color:var(--muted); font-size:15px;
+      }
+      .iframe-cover .spin { font-size:36px; animation:spin 1.2s linear infinite; }
+      @keyframes spin { to{transform:rotate(360deg)} }
+
+      /* Result overlay */
+      .result-overlay {
+        display:none; position:fixed; inset:0;
+        background:rgba(0,0,0,.5); z-index:200;
+        align-items:center; justify-content:center;
+      }
+      .result-overlay.open { display:flex; }
+      .result-modal {
+        background:#fff; border-radius:18px; padding:36px 40px;
+        max-width:520px; width:92%; max-height:90vh; overflow-y:auto;
+        box-shadow:0 24px 64px rgba(0,0,0,.25);
+        animation:pop .3s cubic-bezier(.34,1.56,.64,1);
+      }
+      @keyframes pop { from{transform:scale(.85);opacity:0} }
+      .result-band  { font-size:64px; font-weight:800; line-height:1; margin-bottom:4px; }
+      .result-sub   { font-size:16px; color:var(--muted); margin-bottom:24px; }
+      .result-stats { display:flex; justify-content:center; gap:28px; margin-bottom:24px; flex-wrap:wrap; }
+      .rs-item      { text-align:center; }
+      .rs-num       { font-size:24px; font-weight:700; }
+      .rs-label     { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+
+      /* Answer review inside modal */
+      .review-title { font-size:14px; font-weight:700; margin-bottom:10px; margin-top:4px; text-align:left; }
+      .review-grid  { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:8px; margin-bottom:24px; }
+      .review-row   {
+        display:flex; align-items:flex-start; gap:8px;
+        border-radius:8px; padding:9px 11px; font-size:13px;
+      }
+      .review-row.correct   { background:#f0fdf4; }
+      .review-row.wrong     { background:#fef2f2; }
+      .review-row.no-key    { background:#f8f9fa; }
+      .review-q    { font-weight:700; min-width:26px; }
+      .review-body { flex:1; line-height:1.5; }
+      /* .review-yours   { } */
+      .review-correct { color:var(--green,#16a34a); font-size:12px; }
+      .review-icon { font-size:15px; flex-shrink:0; }
+
+      .result-actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+
+      @media(max-width:700px){
+        .content-area { flex-direction:column; }
+        .answer-panel { width:100%; max-width:100%; border-left:none; border-top:1.5px solid var(--border); max-height:45vh; }
+        .iframe-wrap  { min-height:200px; }
+        .top-bar-title{ font-size:13px; }
+        .result-modal { padding:24px 20px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="app-header" id="app-header"></header>
+
+    <div class="take-test-wrap">
+      <div class="top-bar">
+        <div class="top-bar-title" id="test-title-bar">Loading test…</div>
+        <div class="top-bar-badge">
+          <span class="badge" id="type-badge">—</span>
+          <div class="timer-pill" id="timer-pill">
+            <div class="timer-dot"></div>
+            <span id="timer-text">--:--</span>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="confirmSubmit()">Submit ✓</button>
+        </div>
+      </div>
+
+      <div class="progress-strip">
+        <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+
+      <div class="content-area">
+        <div class="iframe-wrap">
+          <div class="iframe-cover" id="iframe-cover">
+            <div class="spin">⏳</div>
+            <div>Loading test content…</div>
+          </div>
+          <iframe class="test-iframe" id="test-iframe"
+            sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+        </div>
+
+        <div class="answer-panel">
+          <div class="answer-panel-head">
+            Your Answers
+            <small>Type answers below — refer to the test on the left</small>
+          </div>
+          <div class="answers-scroll" id="answers-scroll"></div>
+          <div class="submit-footer">
+            <div class="filled-count" id="filled-count">0 of 0 answered</div>
+            <button class="btn btn-primary" style="width:100%" onclick="confirmSubmit()">Submit Test ✓</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Result overlay -->
+    <div class="result-overlay" id="result-overlay">
+      <div class="result-modal">
+        <div style="font-size:48px;margin-bottom:8px;text-align:center" id="result-emoji">🏆</div>
+        <div class="result-band" style="text-align:center" id="result-band">—</div>
+        <div class="result-sub"  style="text-align:center" id="result-sub">Band Score</div>
+        <div class="result-stats" id="result-stats"></div>
+        <div class="review-title" id="review-title"></div>
+        <div class="review-grid"  id="review-grid"></div>
+        <div class="result-actions">
+          <a href="results.html"  class="btn btn-primary">📊 View My Results</a>
+          <a href="tests.html"    class="btn btn-outline">← Back to Tests</a>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let user, test;
+      let totalSeconds = 0, elapsed = 0, timerInterval = null;
+      let questionCount = 0;
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        user = await Auth.initUser('student');
+        if (!user) return;
+        renderHeader('tests.html');
+
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('id');
+        if (!id) { showError('No test ID provided.'); return; }
+
+        const tests = await DB.getTests();
+        test = tests.find(t => t.id === id);
+        if (!test) { showError('Test not found.'); return; }
+
+        setupTest();
+      });
+
+      function showError(msg) {
+        document.getElementById('iframe-cover').innerHTML =
+          `<div style="font-size:28px">⚠️</div><div>${msg}</div>
+           <a href="tests.html" class="btn btn-outline" style="margin-top:8px">← Back to Tests</a>`;
+      }
+
+      function setupTest() {
+        document.title = test.title + ' — IELTS Master';
+        document.getElementById('test-title-bar').textContent = test.title;
+        const isRead = test.type === 'reading';
+        const badge  = document.getElementById('type-badge');
+        badge.textContent = isRead ? '📖 Reading' : '🎧 Listening';
+        badge.className   = `badge ${isRead ? 'badge-red' : 'badge-blue'}`;
+
+        questionCount = parseInt(test.question_count) || 13;
+        buildAnswerInputs(questionCount);
+        loadContent();
+
+        totalSeconds = (isRead ? 60 : 40) * 60;
+        startTimer();
+      }
+
+      function loadContent() {
+        const iframe = document.getElementById('test-iframe');
+        const cover  = document.getElementById('iframe-cover');
+        iframe.onload = () => { cover.style.display = 'none'; };
+
+        if (test.mode === 'url' && test.url) {
+          iframe.src = test.url;
+        } else if (test.mode === 'html' && test.html) {
+          const blob = new Blob([test.html], { type: 'text/html' });
+          iframe.src = URL.createObjectURL(blob);
+        } else {
+          showError('This test has no content. Please contact your teacher.');
+        }
+      }
+
+      function buildAnswerInputs(n) {
+        const scroll = document.getElementById('answers-scroll');
+        scroll.innerHTML = '';
+        for (let i = 0; i < n; i++) {
+          const row = document.createElement('div');
+          row.className = 'q-row';
+          row.innerHTML = `
+            <div class="q-num">Q${i + 1}</div>
+            <input type="text" class="q-input" id="ans_${i}"
+              placeholder="Answer ${i + 1}"
+              autocomplete="off" spellcheck="false"
+              oninput="onAnswerInput(${i}, this)">`;
+          scroll.appendChild(row);
+        }
+        updateFilledCount();
+      }
+
+      function onAnswerInput(i, el) {
+        el.classList.toggle('filled', el.value.trim().length > 0);
+        updateFilledCount();
+      }
+
+      function updateFilledCount() {
+        let filled = 0;
+        for (let i = 0; i < questionCount; i++) {
+          const el = document.getElementById('ans_' + i);
+          if (el && el.value.trim()) filled++;
+        }
+        document.getElementById('filled-count').textContent =
+          filled + ' of ' + questionCount + ' answered';
+      }
+
+      /* ── Timer ── */
+      function startTimer() {
+        updateTimerDisplay();
+        timerInterval = setInterval(() => {
+          elapsed++;
+          updateTimerDisplay();
+          if (elapsed >= totalSeconds) {
+            clearInterval(timerInterval);
+            alert('⏰ Time is up! Submitting your answers now.');
+            submitTest();
+          }
+        }, 1000);
+      }
+
+      function updateTimerDisplay() {
+        const remaining = Math.max(0, totalSeconds - elapsed);
+        const m = Math.floor(remaining / 60);
+        const s = remaining % 60;
+        document.getElementById('timer-text').textContent =
+          String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+        document.getElementById('timer-pill').classList.toggle('urgent', remaining < 120);
+        document.getElementById('progress-fill').style.width =
+          Math.round((elapsed / totalSeconds) * 100) + '%';
+      }
+
+      /* ── Submit ── */
+      function confirmSubmit() {
+        let filled = 0;
+        for (let i = 0; i < questionCount; i++) {
+          const el = document.getElementById('ans_' + i);
+          if (el && el.value.trim()) filled++;
+        }
+        const unanswered = questionCount - filled;
+        if (unanswered > 0 &&
+            !confirm(`You have ${unanswered} unanswered question(s). Submit anyway?`)) return;
+        submitTest();
+      }
+
+      async function submitTest() {
+        clearInterval(timerInterval);
+
+        // Collect student answers
+        const answers = [];
+        for (let i = 0; i < questionCount; i++) {
+          const el = document.getElementById('ans_' + i);
+          answers.push(el ? el.value.trim() : '');
+        }
+
+        // Answer key stored by teacher (array of strings, may be empty/partial)
+        const answerKey = test.answer_key || [];
+        const hasKey    = answerKey.some(a => a && a.trim());
+
+        let score = 0;
+        const gradedAnswers = answers.map((ans, i) => {
+          const key = (answerKey[i] || '').trim();
+          if (!key) return { ans, key: '', correct: null }; // no key = ungraded
+          const correct = ans.toLowerCase() === key.toLowerCase();
+          if (correct) score++;
+          return { ans, key, correct };
+        });
+
+        // If no key at all, fall back to counting filled answers
+        if (!hasKey) score = answers.filter(a => a.length > 0).length;
+
+        const total    = questionCount;
+        const usedMin  = Math.floor(elapsed / 60);
+        const usedSec  = elapsed % 60;
+        const timeUsed = String(usedMin).padStart(2,'0') + ':' + String(usedSec).padStart(2,'0');
+
+        const resultObj = {
+          test:            test.title,
+          type:            test.type,
+          score,
+          total,
+          answers,
+          correct_answers: answerKey,
+          date:            new Date().toLocaleDateString(),
+        };
+
+        const saved = await DB.saveResult(user.id, resultObj);
+        showResultOverlay(score, total, timeUsed, gradedAnswers, hasKey, saved.ok);
+      }
+
+      /* ── Result overlay ── */
+      function showResultOverlay(score, total, timeUsed, gradedAnswers, hasKey, savedOk) {
+        const pct   = total ? Math.round((score / total) * 100) : 0;
+        const band  = bandScore(score, total);
+        const color = bandColor(pct);
+        const emoji = band >= 7.5 ? '🏆' : band >= 6 ? '🎯' : band >= 5 ? '📈' : '💪';
+
+        document.getElementById('result-emoji').textContent = emoji;
+        document.getElementById('result-band').textContent  = 'Band ' + band;
+        document.getElementById('result-band').style.color  = color;
+        document.getElementById('result-sub').textContent   =
+          (test.type === 'reading' ? '📖 Reading' : '🎧 Listening') +
+          ' · ' + (savedOk ? '✅ Saved to results' : '⚠️ Save failed');
+
+        // Stats row
+        document.getElementById('result-stats').innerHTML = `
+          <div class="rs-item">
+            <div class="rs-num">${score}/${total}</div>
+            <div class="rs-label">Score</div>
+          </div>
+          <div class="rs-item">
+            <div class="rs-num" style="color:${color}">${pct}%</div>
+            <div class="rs-label">Correct</div>
+          </div>
+          <div class="rs-item">
+            <div class="rs-num">${timeUsed}</div>
+            <div class="rs-label">Time used</div>
+          </div>`;
+
+        // Per-question review
+        document.getElementById('review-title').textContent =
+          hasKey ? '📋 Answer Review' : '📋 Your Answers (no key provided)';
+
+        document.getElementById('review-grid').innerHTML = gradedAnswers.map((g, i) => {
+          if (g.correct === null) {
+            // no key for this question
+            return `<div class="review-row no-key">
+              <div class="review-q">Q${i+1}</div>
+              <div class="review-body">
+                <div class="review-yours">${g.ans || '<em style="color:var(--muted)">blank</em>'}</div>
+              </div>
+              <div class="review-icon">—</div>
+            </div>`;
+          }
+          return `<div class="review-row ${g.correct ? 'correct' : 'wrong'}">
+            <div class="review-q">Q${i+1}</div>
+            <div class="review-body">
+              <div class="review-yours">${g.ans || '<em style="color:var(--muted)">blank</em>'}</div>
+              ${!g.correct ? `<div class="review-correct">✓ ${g.key}</div>` : ''}
+            </div>
+            <div class="review-icon">${g.correct ? '✅' : '❌'}</div>
+          </div>`;
+        }).join('');
+
+        document.getElementById('result-overlay').classList.add('open');
+      }
+    </script>
+  </body>
+</html>

@@ -93,7 +93,7 @@
           document.getElementById('listening-builtin-label').style.display   = 'none';
         }
 
-        // Built-in placeholder cards (you can replace with real tests)
+        // Built-in placeholder cards
         renderBuiltinPlaceholders('reading',   'reading-grid');
         renderBuiltinPlaceholders('listening', 'listening-grid');
       });
@@ -122,7 +122,7 @@
                      <div class="tc-score">Best: Band ${best} · Last: ${last.score}/${last.total}</div>`
                   : `<span class="badge badge-gray">Not attempted</span>`}
               </div>
-              <button class="btn btn-primary btn-sm" onclick="openTest('${t.id}', '${encodeURIComponent(t.title)}')">
+              <button class="btn btn-primary btn-sm" onclick="openTest('${t.id}')">
                 ${attempts.length ? 'Retake' : 'Start'}
               </button>
             </div>
@@ -131,29 +131,15 @@
       }
 
       function renderBuiltinPlaceholders(type, gridId) {
-        // Placeholder — replace with your real built-in test list
         document.getElementById(gridId).innerHTML = `
           <div style="color:var(--muted);padding:20px;font-size:14px">
             No built-in ${type} tests yet. Ask your teacher to add tests.
           </div>`;
       }
 
-      async function openTest(testId, encodedTitle) {
-        const tests = await DB.getTests();
-        const test  = tests.find(t => t.id === testId);
-        if (!test) { alert('Test not found.'); return; }
-
-        if (test.mode === 'url' && test.url) {
-          // Open the URL directly in a new tab
-          window.open(test.url, '_blank');
-        } else if (test.mode === 'html' && test.html) {
-          // Open inline HTML in a new tab via blob URL
-          const blob = new Blob([test.html], { type: 'text/html' });
-          const blobUrl = URL.createObjectURL(blob);
-          window.open(blobUrl, '_blank');
-        } else {
-          alert('This test has no content. Please contact your teacher.');
-        }
+      // ── KEY FIX: redirect to in-app test runner instead of window.open ──
+      function openTest(testId) {
+        window.location.href = 'take-test.html?id=' + encodeURIComponent(testId);
       }
 
       function switchTab(tab, btn) {

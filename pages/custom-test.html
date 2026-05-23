@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Test — IELTS Master</title>
     <link rel="stylesheet" href="../css/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-config.js"></script>
     <script src="../js/auth.js" defer></script>
     <script src="../js/data.js" defer></script>
     <style>
@@ -140,27 +142,29 @@
         elapsed = 0,
         timerInterval;
 
-      document.addEventListener("DOMContentLoaded", () => {
-        user = Auth.requireAuth("student");
+      document.addEventListener("DOMContentLoaded", async () => {
+        user = await Auth.initUser("student");
         if (!user) return;
         renderHeader("tests.html");
 
         const params = new URLSearchParams(window.location.search);
         const id = params.get("id");
         if (!id) {
-          document.getElementById("loading").textContent =
-            "No test ID provided.";
+          document.getElementById("loading").textContent = "No test ID provided.";
           return;
         }
 
-        test = DB.getCustomTest(id);
+        const tests = await DB.getTests();
+        test = tests.find(t => t.id === id);
         if (!test) {
           document.getElementById("loading").textContent = "Test not found.";
           return;
         }
 
         renderTest();
-        startTimer(test.timeLimitMinutes * 60);
+        // Use question_count * 1 min per question, or default 60 min
+        const minutes = test.timeLimitMinutes || (test.type === "reading" ? 60 : 40);
+        startTimer(minutes * 60);
       });
 
       function renderTest() {
@@ -231,7 +235,7 @@
           ((totalSeconds - remaining) / totalSeconds) * 100 + "%";
       }
 
-      function submitTest() {
+      async function submitTest() {
         clearInterval(timerInterval);
 
         const answers = test.questions.map((_, i) => {
@@ -256,12 +260,10 @@
           explanations: test.questions.map((q) => q.explanation || ""),
         };
 
-        DB.addResult(user.id, result);
+        await DB.saveResult(user.id, result);
 
-        // Build result detail URL (reuse existing result-detail.html via index)
-        const allResults = DB.getUserResults(user.id);
-        const idx = allResults.length - 1;
-        window.location.href = `result-detail.html?uid=${user.id}&idx=${idx}`;
+        // Redirect to results page
+        window.location.href = "results.html";
       }
     </script>
   </body>

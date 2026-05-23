@@ -1,4 +1,3 @@
-
 const DB = {
   async getUserResults(userId) {
     try {
