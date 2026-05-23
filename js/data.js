@@ -19,6 +19,10 @@ const DB = {
 
   async saveResult(userId, resultObj) {
     try {
+      // Accept both camelCase (correctAnswers) and snake_case (correct_answers)
+      const correctAnswers =
+        resultObj.correctAnswers || resultObj.correct_answers || [];
+
       const { error } = await _supabase.from("results").insert({
         user_id: userId,
         test: resultObj.test,
@@ -26,7 +30,7 @@ const DB = {
         score: resultObj.score,
         total: resultObj.total,
         answers: resultObj.answers || [],
-        correct_answers: resultObj.correctAnswers || [],
+        correct_answers: correctAnswers,
         date: resultObj.date || new Date().toLocaleDateString(),
       });
       if (error) {

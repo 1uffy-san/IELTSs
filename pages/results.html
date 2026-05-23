@@ -353,15 +353,23 @@
         const band = bandScore(r.score, r.total);
         const pct = pctScore(r.score, r.total);
         let answersHTML = "";
-        if (r.answers && r.correct_answers) {
+        if (r.answers && r.answers.length > 0) {
           answersHTML = `<div class="answers-grid">
-      ${r.correct_answers
-        .map((correct, i) => {
-          const yours = (r.answers[i] || "").trim().toLowerCase();
-          const ok = yours === correct.toLowerCase();
+      ${r.answers
+        .map((ans, i) => {
+          const correct = ((r.correct_answers || [])[i] || "").trim();
+          if (!correct) {
+            // No answer key — just show what the student wrote
+            return `<div class="answer-row">
+            <div class="answer-q">Q${i + 1}</div>
+            <div class="answer-yours"><strong>Your answer:</strong> ${ans || "(blank)"}</div>
+            <div class="answer-icon">—</div>
+          </div>`;
+          }
+          const ok = ans.trim().toLowerCase() === correct.toLowerCase();
           return `<div class="answer-row">
           <div class="answer-q">Q${i + 1}</div>
-          <div class="answer-yours" style="color:${ok ? "var(--green)" : "var(--red)"}"><strong>Your answer:</strong> ${r.answers[i] || "(blank)"}</div>
+          <div class="answer-yours" style="color:${ok ? "var(--green)" : "var(--red)"}"><strong>Your answer:</strong> ${ans || "(blank)"}</div>
           ${!ok ? `<div class="answer-correct">✓ ${correct}</div>` : ""}
           <div class="answer-icon">${ok ? "✅" : "❌"}</div>
         </div>`;
