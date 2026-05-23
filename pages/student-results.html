@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Student Results — IELTS Master</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase-config.js"></script>
+    <script src="../js/auth.js" defer></script>
+    <script src="../js/data.js" defer></script>
+    <style>
+      .back-link { display:inline-flex; align-items:center; gap:6px; font-size:14px; color:var(--muted); text-decoration:none; margin-bottom:20px; font-weight:500; }
+      .back-link:hover { color:var(--red); }
+      .student-hero { display:flex; align-items:center; gap:18px; background:#fff; border:1.5px solid var(--border); border-radius:14px; padding:24px 28px; margin-bottom:24px; }
+      .hero-avatar { width:60px; height:60px; border-radius:50%; background:var(--red); color:#fff; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:700; flex-shrink:0; }
+      .hero-avatar img { width:60px; height:60px; border-radius:50%; object-fit:cover; }
+      .hero-name { font-size:20px; font-weight:800; margin-bottom:4px; }
+      .hero-email { font-size:13px; color:var(--muted); }
+      .summary-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin-bottom:28px; }
+      .sum-card { background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:18px 16px; text-align:center; }
+      .sum-icon { font-size:28px; margin-bottom:8px; }
+      .sum-num { font-size:26px; font-weight:800; margin-bottom:4px; }
+      .sum-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+      .band-chart { background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:20px 24px; margin-bottom:24px; }
+      .band-chart h3 { font-size:15px; font-weight:700; margin-bottom:16px; }
+      .chart-area { display:flex; align-items:flex-end; gap:6px; height:120px; }
+      .chart-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end; }
+      .chart-bar { width:100%; border-radius:4px 4px 0 0; min-height:4px; }
+      .chart-label { font-size:10px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; text-align:center; }
+      .chart-value { font-size:10px; font-weight:700; }
+      .detail-panel { background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:24px; margin-bottom:24px; display:none; }
+      .detail-panel.open { display:block; }
+      .answers-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; margin-top:16px; }
+      .answer-row { display:flex; align-items:center; gap:10px; background:var(--bg); border-radius:8px; padding:10px 12px; }
+      .answer-q { font-size:13px; font-weight:700; min-width:28px; }
+      .answer-yours { font-size:13px; flex:1; }
+      .answer-correct { font-size:12px; color:var(--muted); }
+      .answer-icon { font-size:16px; }
+      .result-row { cursor:pointer; transition:.15s; }
+      .result-row:hover td { background:#fef9f9; }
+    </style>
+  </head>
+  <body>
+    <header class="app-header" id="app-header"></header>
+    <main class="app-main" id="main">
+      <a href="students.html" class="back-link">← Back to Students</a>
+      <div id="content">
+        <div style="text-align:center;padding:60px;color:var(--muted)">Loading…</div>
+      </div>
+    </main>
+
+    <script>
+      let user, student, results = [], selectedIdx = null;
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        user = await Auth.initUser('teacher');
+        if (!user) return;
+        renderHeader('students.html');
+
+        const params = new URLSearchParams(window.location.search);
+        const sid = params.get('sid');
+        if (!sid) { document.getElementById('content').innerHTML = '<p style="color:var(--muted)">No student ID provided.</p>'; return; }
+
+        const [users, allResults] = await Promise.all([DB.getUsers(), DB.getAllResults()]);
+        student = users.find(u => u.id === sid);
+        if (!student) { document.getElementById('content').innerHTML = '<p style="color:var(--muted)">Student not found.</p>'; return; }
+        results = allResults[sid] || [];
+
+        render();
+      });
+
+      function render() {
+        const initials  = student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+        const avatarHTML = student.picture ? `<img src="${student.picture}" alt="${student.name}">` : initials;
+        const rCt  = results.filter(r => r.type === 'reading').length;
+        const lCt  = results.filter(r => r.type === 'listening').length;
+        const best = results.length ? Math.max(...results.map(r => bandScore(r.score, r.total))) : null;
+        const avg  = results.length ? (results.reduce((s,r) => s + bandScore(r.score, r.total), 0) / results.length).toFixed(1) : null;
+
+        document.title = student.name + ' — IELTS Master';
+
+        document.getElementById('content').innerHTML = `
+          <div class="student-hero">
+            <div class="hero-avatar">${avatarHTML}</div>
+            <div>
+              <div class="hero-name">${student.name}</div>
+              <div class="hero-email">${student.email} · <span class="badge ${student.provider === 'google' ? 'badge-blue' : 'badge-gray'}">${student.provider === 'google' ? '🔑 Google' : '✉️ Email'}</span></div>
+            </div>
+          </div>
+
+          <div class="summary-grid">
+            <div class="sum-card"><div class="sum-icon">📋</div><div class="sum-num">${results.length}</div><div class="sum-label">Total Tests</div></div>
+            <div class="sum-card"><div class="sum-icon">📖</div><div class="sum-num">${rCt}</div><div class="sum-label">Reading</div></div>
+            <div class="sum-card"><div class="sum-icon">🎧</div><div class="sum-num">${lCt}</div><div class="sum-label">Listening</div></div>
+            <div class="sum-card"><div class="sum-icon">🏆</div><div class="sum-num" style="color:var(--green)">${best !== null ? 'Band ' + best : '—'}</div><div class="sum-label">Best Band</div></div>
+            <div class="sum-card"><div class="sum-icon">📈</div><div class="sum-num">${avg !== null ? 'Band ' + avg : '—'}</div><div class="sum-label">Avg Band</div></div>
+          </div>
+
+          <div class="band-chart">
+            <h3>Band Score History</h3>
+            <div class="chart-area" id="chart-area"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><h2>All Results</h2></div>
+            <div id="detail-panel" class="detail-panel"></div>
+            <div id="results-table"></div>
+          </div>`;
+
+        renderChart();
+        renderTable();
+      }
+
+      function renderChart() {
+        const area = document.getElementById('chart-area');
+        if (!results.length) {
+          area.innerHTML = `<div style="color:var(--muted);font-size:14px;text-align:center;width:100%">No results yet.</div>`;
+          return;
+        }
+        const last12 = [...results].slice(-12);
+        area.innerHTML = last12.map(r => {
+          const band  = bandScore(r.score, r.total);
+          const pct   = pctScore(r.score, r.total);
+          const hPct  = Math.round((band / 9) * 100);
+          const color = bandColor(pct);
+          const short = r.test.replace('Cambridge IELTS ', '').replace(' Academic Reading Test', 'R').replace(' Academic Listening Test', 'L');
+          return `<div class="chart-bar-wrap" title="${r.test} — Band ${band}">
+            <div class="chart-value" style="color:${color}">B${band}</div>
+            <div class="chart-bar" style="height:${hPct}%;background:${color}"></div>
+            <div class="chart-label">${short}</div>
+          </div>`;
+        }).join('');
+      }
+
+      function renderTable() {
+        const wrap = document.getElementById('results-table');
+        if (!results.length) {
+          wrap.innerHTML = `<div class="empty-state"><div class="es-icon">📋</div><h3>No tests yet</h3><p>This student hasn't taken any tests.</p></div>`;
+          return;
+        }
+        wrap.innerHTML = `<div class="table-wrap"><table>
+          <thead><tr><th>Test</th><th>Type</th><th>Score</th><th>Band</th><th>%</th><th>Date</th></tr></thead>
+          <tbody>
+          ${[...results].reverse().map((r, ri) => {
+            const origIdx = results.length - 1 - ri;
+            const band  = bandScore(r.score, r.total);
+            const pct   = pctScore(r.score, r.total);
+            return `<tr class="result-row" onclick="toggleDetail(${origIdx})">
+              <td style="font-weight:600">${r.test}</td>
+              <td><span class="badge ${r.type === 'reading' ? 'badge-red' : 'badge-blue'}">${r.type === 'reading' ? '📖 Reading' : '🎧 Listening'}</span></td>
+              <td>${r.score}/${r.total}</td>
+              <td style="font-weight:800;color:${bandColor(pct)}">Band ${band}</td>
+              <td><div style="display:flex;align-items:center;gap:8px"><div style="width:60px;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${bandColor(pct)};border-radius:3px"></div></div>${pct}%</div></td>
+              <td style="color:var(--muted)">${r.date}</td>
+            </tr>`;
+          }).join('')}
+          </tbody>
+         </table></div>`;
+      }
+
+      function toggleDetail(idx) {
+        const panel = document.getElementById('detail-panel');
+        if (selectedIdx === idx) {
+          selectedIdx = null;
+          panel.classList.remove('open');
+          return;
+        }
+        selectedIdx = idx;
+        const r = results[idx];
+        if (!r) return;
+        const band = bandScore(r.score, r.total);
+        const pct  = pctScore(r.score, r.total);
+
+        let answersHTML = '';
+        // ✅ correct field name from Supabase
+        if (r.answers && r.correct_answers) {
+          answersHTML = `<div class="answers-grid">
+            ${r.correct_answers.map((correct, i) => {
+              const yours = (r.answers[i] || '').trim().toLowerCase();
+              const ok = yours === correct.toLowerCase();
+              return `<div class="answer-row">
+                <div class="answer-q">Q${i+1}</div>
+                <div class="answer-yours" style="color:${ok ? 'var(--green)' : 'var(--red)'}"><strong>Student:</strong> ${r.answers[i] || '(blank)'}</div>
+                ${!ok ? `<div class="answer-correct">✓ ${correct}</div>` : ''}
+                <div class="answer-icon">${ok ? '✅' : '❌'}</div>
+              </div>`;
+            }).join('')}
+          </div>`;
+        }
+
+        panel.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
+            <div>
+              <div style="font-size:17px;font-weight:700">${r.test}</div>
+              <div style="font-size:13px;color:var(--muted)">${r.type === 'reading' ? '📖 Reading' : '🎧 Listening'} · ${r.date}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:42px;font-weight:800;line-height:1;color:${bandColor(pct)}">Band ${band}</div>
+              <div style="font-size:14px;color:var(--muted)">${r.score}/${r.total} correct · ${pct}%</div>
+            </div>
+          </div>
+          <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:16px">
+            <div style="height:100%;width:${pct}%;background:${bandColor(pct)};border-radius:4px"></div>
+          </div>
+          ${answersHTML || '<p style="color:var(--muted);font-size:13px">No detailed answer breakdown available.</p>'}`;
+        panel.classList.add('open');
+        panel.scrollIntoView({ behavior:'smooth', block:'nearest' });
+      }
+    </script>
+  </body>
+</html>

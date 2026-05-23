@@ -353,9 +353,9 @@
         const band = bandScore(r.score, r.total);
         const pct = pctScore(r.score, r.total);
         let answersHTML = "";
-        if (r.answers && r.correctAnswers) {
+        if (r.answers && r.correct_answers) {
           answersHTML = `<div class="answers-grid">
-      ${r.correctAnswers
+      ${r.correct_answers
         .map((correct, i) => {
           const yours = (r.answers[i] || "").trim().toLowerCase();
           const ok = yours === correct.toLowerCase();
