@@ -339,17 +339,25 @@
           answers.push(el ? el.value.trim() : '');
         }
 
-        // Answer key stored by teacher (array of strings, may be empty/partial)
-        const answerKey = test.answer_key || [];
-        const hasKey    = answerKey.some(a => a && a.trim());
+        // answer_key may be:
+        //   new format  → array of arrays:  [["TRUE","T"], ["FALSE"], ...]
+        //   legacy format → array of strings: ["TRUE", "FALSE", ...]
+        // Normalise everything to array-of-arrays.
+        const rawKey = test.answer_key || [];
+        const answerKey = rawKey.map(entry =>
+          Array.isArray(entry) ? entry : (entry ? [entry] : [''])
+        );
+
+        // A question has a key if at least one non-empty accepted answer exists
+        const hasKey = answerKey.some(alts => alts.some(a => a && a.trim()));
 
         let score = 0;
         const gradedAnswers = answers.map((ans, i) => {
-          const key = (answerKey[i] || '').trim();
-          if (!key) return { ans, key: '', correct: null }; // no key = ungraded
-          const correct = ans.toLowerCase() === key.toLowerCase();
+          const alts = (answerKey[i] || ['']).map(a => a.trim()).filter(a => a);
+          if (!alts.length) return { ans, alts: [], correct: null }; // ungraded
+          const correct = alts.some(a => ans.toLowerCase() === a.toLowerCase());
           if (correct) score++;
-          return { ans, key, correct };
+          return { ans, alts, correct };
         });
 
         // If no key at all, fall back to counting filled answers
@@ -366,8 +374,7 @@
           score,
           total,
           answers,
-          correct_answers: answerKey,
-          date:            new Date().toLocaleDateString(),
+          correct_answers: answerKey, // save normalised array-of-arrays
         };
 
         const saved = await DB.saveResult(user.id, resultObj);
@@ -418,11 +425,13 @@
               <div class="review-icon">—</div>
             </div>`;
           }
+          // Show all accepted answers when wrong, so student knows what was expected
+          const acceptedStr = (g.alts || []).join(' / ');
           return `<div class="review-row ${g.correct ? 'correct' : 'wrong'}">
             <div class="review-q">Q${i+1}</div>
             <div class="review-body">
               <div class="review-yours">${g.ans || '<em style="color:var(--muted)">blank</em>'}</div>
-              ${!g.correct ? `<div class="review-correct">✓ ${g.key}</div>` : ''}
+              ${!g.correct && acceptedStr ? `<div class="review-correct">✓ ${acceptedStr}</div>` : ''}
             </div>
             <div class="review-icon">${g.correct ? '✅' : '❌'}</div>
           </div>`;

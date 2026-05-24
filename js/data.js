@@ -6,11 +6,11 @@ const DB = {
         .select("*")
         .eq("user_id", userId)
         .order("id", { ascending: true });
-      if (error) {
-        console.error("getUserResults error:", error);
-        return [];
-      }
-      return data || [];
+      if (error) { console.error("getUserResults error:", error); return []; }
+      return (data || []).map(r => ({
+        ...r,
+        date: r.date || (r.created_at ? new Date(r.created_at).toLocaleDateString() : "—"),
+      }));
     } catch (e) {
       console.error("getUserResults error:", e);
       return [];
@@ -24,19 +24,16 @@ const DB = {
         resultObj.correctAnswers || resultObj.correct_answers || [];
 
       const { error } = await _supabase.from("results").insert({
-        user_id: userId,
-        test: resultObj.test,
-        type: resultObj.type,
-        score: resultObj.score,
-        total: resultObj.total,
-        answers: resultObj.answers || [],
+        user_id:         userId,
+        test:            resultObj.test,
+        type:            resultObj.type,
+        score:           resultObj.score,
+        total:           resultObj.total,
+        answers:         resultObj.answers || [],
         correct_answers: correctAnswers,
-        date: resultObj.date || new Date().toLocaleDateString(),
+        // NOTE: no 'date' column — Supabase sets created_at automatically
       });
-      if (error) {
-        console.error("saveResult error:", error);
-        return { ok: false, error: error.message };
-      }
+      if (error) { console.error("saveResult error:", error); return { ok: false, error: error.message }; }
       return { ok: true };
     } catch (e) {
       console.error("saveResult error:", e);
@@ -50,10 +47,7 @@ const DB = {
         .from("profiles")
         .select("*")
         .order("id", { ascending: true });
-      if (error) {
-        console.error("getUsers error:", error);
-        return [];
-      }
+      if (error) { console.error("getUsers error:", error); return []; }
       return data || [];
     } catch (e) {
       console.error("getUsers error:", e);
@@ -67,15 +61,16 @@ const DB = {
         .from("results")
         .select("*")
         .order("id", { ascending: true });
-      if (error) {
-        console.error("getAllResults error:", error);
-        return {};
-      }
-      // Group by user_id
+      if (error) { console.error("getAllResults error:", error); return {}; }
+      // Group by user_id, normalising date from created_at
       const grouped = {};
       for (const row of data || []) {
-        if (!grouped[row.user_id]) grouped[row.user_id] = [];
-        grouped[row.user_id].push(row);
+        const r = {
+          ...row,
+          date: row.date || (row.created_at ? new Date(row.created_at).toLocaleDateString() : "—"),
+        };
+        if (!grouped[r.user_id]) grouped[r.user_id] = [];
+        grouped[r.user_id].push(r);
       }
       return grouped;
     } catch (e) {
@@ -90,10 +85,7 @@ const DB = {
         .from("tests")
         .select("*")
         .order("created_at", { ascending: true });
-      if (error) {
-        console.error("getTests error:", error);
-        return [];
-      }
+      if (error) { console.error("getTests error:", error); return []; }
       return data || [];
     } catch (e) {
       console.error("getTests error:", e);
@@ -108,10 +100,7 @@ const DB = {
         .select("*")
         .eq("id", testId)
         .single();
-      if (error) {
-        console.error("getTest error:", error);
-        return null;
-      }
+      if (error) { console.error("getTest error:", error); return null; }
       return data || null;
     } catch (e) {
       console.error("getTest error:", e);
@@ -119,27 +108,24 @@ const DB = {
     }
   },
 
- async saveTest(testObj) {
-  try {
-    const { error } = await _supabase.from("tests").insert(testObj);
-    if (error) {
-      console.error("saveTest error:", error.message, error.details, error.hint);
-      return { ok: false, error: error.message };
+  async saveTest(testObj) {
+    try {
+      const { error } = await _supabase.from("tests").insert(testObj);
+      if (error) {
+        console.error("saveTest error:", error.message, error.details, error.hint);
+        return { ok: false, error: error.message };
+      }
+      return { ok: true };
+    } catch (e) {
+      console.error("saveTest error:", e);
+      return { ok: false, error: e.message };
     }
-    return { ok: true };
-  } catch (e) {
-    console.error("saveTest error:", e);
-    return { ok: false, error: e.message };
-  }
-},
+  },
 
   async deleteTest(testId) {
     try {
       const { error } = await _supabase.from("tests").delete().eq("id", testId);
-      if (error) {
-        console.error("deleteTest error:", error);
-        return { ok: false, error: error.message };
-      }
+      if (error) { console.error("deleteTest error:", error); return { ok: false, error: error.message }; }
       return { ok: true };
     } catch (e) {
       console.error("deleteTest error:", e);

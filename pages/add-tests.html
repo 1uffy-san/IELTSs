@@ -35,33 +35,72 @@
       .url-preview { background:#f8f9fa; border:1.5px solid var(--border); border-radius:8px; padding:12px 16px; font-size:13px; color:var(--muted); margin-top:8px; word-break:break-all; }
 
       /* ── Answer key builder ── */
-      .answer-key-section { margin-top:8px; }
       .answer-key-head {
         display: flex; align-items: center; justify-content: space-between;
         margin-bottom: 14px;
       }
-      .answer-key-head h3 { font-size:15px; font-weight:700; margin:0; }
       .answer-key-note { font-size:12px; color:var(--muted); }
-      .answer-key-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 10px;
+
+      /* Each question block sits in a single column */
+      .answer-key-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
       }
-      .ak-row {
+
+      /* One card per question */
+      .ak-question {
+        background: var(--bg, #f8f9fa);
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        padding: 12px 14px;
+      }
+      .ak-question-header {
         display: flex;
         align-items: center;
-        gap: 8px;
-        background: var(--bg, #f8f9fa);
-        border-radius: 8px;
-        padding: 8px 10px;
+        justify-content: space-between;
+        margin-bottom: 8px;
       }
-      .ak-num {
+      .ak-q-label {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text);
+      }
+      .ak-add-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        border: 1.5px solid var(--border);
+        background: #fff;
         font-size: 12px;
+        font-weight: 600;
+        font-family: inherit;
+        color: var(--red, #922B21);
+        cursor: pointer;
+        transition: .15s;
+      }
+      .ak-add-btn:hover { background: var(--red-light, #fef2f2); border-color: var(--red); }
+
+      /* The list of answer inputs for one question */
+      .ak-answers-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .ak-answer-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .ak-alt-badge {
+        font-size: 10px;
         font-weight: 700;
         color: var(--muted);
-        min-width: 26px;
-        text-align: right;
+        min-width: 36px;
         flex-shrink: 0;
+        text-align: right;
       }
       .ak-input {
         flex: 1;
@@ -76,6 +115,21 @@
       }
       .ak-input:focus { border-color: var(--red); }
       .ak-input.filled { background:#f0fdf4; border-color:#86efac; }
+      .ak-remove-btn {
+        width: 24px; height: 24px;
+        border-radius: 5px;
+        border: 1.5px solid #fca5a5;
+        background: #fee2e2;
+        color: #dc2626;
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+        transition: .15s;
+        font-family: inherit;
+      }
+      .ak-remove-btn:hover { background: #fecaca; }
 
       .ak-helper {
         background: #fffbeb;
@@ -181,10 +235,10 @@
           </div>
 
           <div class="ak-helper">
-            ℹ️ Enter the correct answer for each question. Answers are case-insensitive (e.g. "TRUE" = "true"). Leave blank to skip auto-grading for that question.
+            ℹ️ Enter one or more accepted answers per question — all are case-insensitive. Click <strong>+ Add Answer</strong> to allow alternative correct answers (e.g. "TRUE" and "T"). Leave a question blank to skip auto-grading for it.
           </div>
 
-          <div class="answer-key-grid" id="answer-key-grid">
+          <div class="answer-key-list" id="answer-key-list">
             <!-- built by rebuildAnswerKey() -->
           </div>
           <div class="ak-filled-count" id="ak-filled-count"></div>
@@ -210,30 +264,122 @@
         const user = await Auth.initUser('teacher');
         if (!user) return;
         renderHeader('add-tests.html');
-        rebuildAnswerKey(); // build with default qcount
+        rebuildAnswerKey();
       });
 
-      /* ── Answer Key builder ── */
+      /* ─────────────────────────────────────────────
+         Answer Key — multi-answer per question
+      ───────────────────────────────────────────── */
+
+      // answerData[i] = array of strings for question i
+      let answerData = [];
+
       function rebuildAnswerKey() {
         const n = parseInt(document.getElementById('test-qcount').value) || 13;
-        const grid = document.getElementById('answer-key-grid');
-        grid.innerHTML = '';
-        for (let i = 0; i < n; i++) {
-          const row = document.createElement('div');
-          row.className = 'ak-row';
-          row.innerHTML = `
-            <div class="ak-num">Q${i + 1}</div>
-            <input type="text" class="ak-input" id="ak_${i}"
-              placeholder="correct answer"
-              autocomplete="off" spellcheck="false"
-              oninput="onAkInput(${i}, this)">`;
-          grid.appendChild(row);
-        }
+
+        // Preserve existing data when count changes; pad or trim
+        while (answerData.length < n) answerData.push(['']);
+        answerData = answerData.slice(0, n);
+
+        renderAnswerKey(n);
         updateAkCount();
       }
 
-      function onAkInput(i, el) {
-        el.classList.toggle('filled', el.value.trim().length > 0);
+      function renderAnswerKey(n) {
+        const list = document.getElementById('answer-key-list');
+        list.innerHTML = '';
+        for (let i = 0; i < n; i++) {
+          list.appendChild(buildQuestionBlock(i));
+        }
+      }
+
+      function buildQuestionBlock(i) {
+        const wrap = document.createElement('div');
+        wrap.className = 'ak-question';
+        wrap.id = `ak-q-${i}`;
+
+        // Header row: "Q1" label + "+ Add Answer" button
+        const header = document.createElement('div');
+        header.className = 'ak-question-header';
+        header.innerHTML = `
+          <span class="ak-q-label">Q${i + 1}</span>
+          <button type="button" class="ak-add-btn" onclick="addAnswer(${i})">
+            ＋ Add Answer
+          </button>`;
+        wrap.appendChild(header);
+
+        // Answer inputs list
+        const answersList = document.createElement('div');
+        answersList.className = 'ak-answers-list';
+        answersList.id = `ak-answers-${i}`;
+        wrap.appendChild(answersList);
+
+        // Render existing answers
+        const answers = answerData[i] || [''];
+        answers.forEach((val, j) => {
+          answersList.appendChild(buildAnswerRow(i, j, val));
+        });
+
+        return wrap;
+      }
+
+      function buildAnswerRow(i, j, value = '') {
+        const row = document.createElement('div');
+        row.className = 'ak-answer-row';
+        row.id = `ak-row-${i}-${j}`;
+
+        const badge = document.createElement('span');
+        badge.className = 'ak-alt-badge';
+        badge.textContent = j === 0 ? 'Main' : `Alt ${j}`;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'ak-input' + (value.trim() ? ' filled' : '');
+        input.id = `ak-input-${i}-${j}`;
+        input.value = value;
+        input.placeholder = j === 0 ? 'correct answer' : 'alternative answer';
+        input.autocomplete = 'off';
+        input.spellcheck = false;
+        input.addEventListener('input', () => {
+          answerData[i][j] = input.value;
+          input.classList.toggle('filled', input.value.trim().length > 0);
+          updateAkCount();
+        });
+
+        row.appendChild(badge);
+        row.appendChild(input);
+
+        // Show remove button for all rows except the first (main answer)
+        if (j > 0) {
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'ak-remove-btn';
+          removeBtn.title = 'Remove this alternative';
+          removeBtn.textContent = '×';
+          removeBtn.addEventListener('click', () => removeAnswer(i, j));
+          row.appendChild(removeBtn);
+        }
+
+        return row;
+      }
+
+      function addAnswer(i) {
+        answerData[i].push('');
+        const j = answerData[i].length - 1;
+        const answersList = document.getElementById(`ak-answers-${i}`);
+        answersList.appendChild(buildAnswerRow(i, j, ''));
+        // Focus the new input
+        const newInput = document.getElementById(`ak-input-${i}-${j}`);
+        if (newInput) newInput.focus();
+      }
+
+      function removeAnswer(i, j) {
+        answerData[i].splice(j, 1);
+        // Re-render just this question block
+        const n = parseInt(document.getElementById('test-qcount').value) || 13;
+        const oldBlock = document.getElementById(`ak-q-${i}`);
+        const newBlock = buildQuestionBlock(i);
+        oldBlock.replaceWith(newBlock);
         updateAkCount();
       }
 
@@ -241,19 +387,21 @@
         const n = parseInt(document.getElementById('test-qcount').value) || 13;
         let filled = 0;
         for (let i = 0; i < n; i++) {
-          const el = document.getElementById('ak_' + i);
-          if (el && el.value.trim()) filled++;
+          const answers = answerData[i] || [];
+          if (answers.some(a => a.trim())) filled++;
         }
         document.getElementById('ak-filled-count').textContent =
-          `${filled} of ${n} answers entered`;
+          `${filled} of ${n} questions have at least one answer`;
       }
 
+      // Returns array of arrays: [ ["TRUE","T"], ["FALSE"], ["carbon dioxide", "CO2"], ... ]
+      // Empty questions become [""] so index alignment is preserved.
       function collectAnswerKey() {
         const n = parseInt(document.getElementById('test-qcount').value) || 13;
         const keys = [];
         for (let i = 0; i < n; i++) {
-          const el = document.getElementById('ak_' + i);
-          keys.push(el ? el.value.trim() : '');
+          const answers = (answerData[i] || ['']).map(a => a.trim()).filter(a => a.length > 0);
+          keys.push(answers.length > 0 ? answers : ['']);
         }
         return keys;
       }
@@ -299,25 +447,25 @@
       /* ── Save test ── */
       async function saveTest() {
         hideAlert();
-        const title   = document.getElementById('test-title').value.trim();
-        const type    = document.getElementById('test-type').value;
-        const qcount  = parseInt(document.getElementById('test-qcount').value) || 13;
-        const url     = document.getElementById('test-url').value.trim();
-        const html    = document.getElementById('test-html').value.trim();
-        const answerKey = collectAnswerKey();
+        const title  = document.getElementById('test-title').value.trim();
+        const type   = document.getElementById('test-type').value;
+        const qcount = parseInt(document.getElementById('test-qcount').value) || 13;
+        const url    = document.getElementById('test-url').value.trim();
+        const html   = document.getElementById('test-html').value.trim();
+        const answerKey = collectAnswerKey(); // array of arrays
 
         if (!title) { showAlert('Please enter a test title.'); return; }
-        if (currentMode === 'url' && !url)  { showAlert('Please paste a URL for the test.'); return; }
-        if (currentMode === 'html' && !html){ showAlert('Please paste the HTML for the test.'); return; }
+        if (currentMode === 'url'  && !url)  { showAlert('Please paste a URL for the test.'); return; }
+        if (currentMode === 'html' && !html) { showAlert('Please paste the HTML for the test.'); return; }
 
         const testObj = {
           title,
           type,
           question_count: qcount,
-          mode: currentMode,
+          mode:       currentMode,
           url:        currentMode === 'url'  ? url  : null,
           html:       currentMode === 'html' ? html : null,
-          answer_key: answerKey,          // ← stored in Supabase
+          answer_key: answerKey,   // stored as array of arrays in Supabase (jsonb)
           created_at: new Date().toISOString(),
         };
 
@@ -329,6 +477,7 @@
         document.getElementById('test-url').value   = '';
         document.getElementById('test-html').value  = '';
         document.getElementById('url-preview').style.display = 'none';
+        answerData = [];
         rebuildAnswerKey();
 
         const msg = document.getElementById('success-msg');
@@ -347,8 +496,13 @@
         }
         el.innerHTML = `<div class="custom-tests-list">
           ${[...tests].reverse().map(t => {
-            const keyCount = (t.answer_key || []).filter(a => a && a.trim()).length;
-            const total    = t.question_count || 0;
+            // answer_key may be array-of-arrays (new) or array-of-strings (legacy)
+            const key = t.answer_key || [];
+            const keyCount = key.filter(entry => {
+              if (Array.isArray(entry)) return entry.some(a => a && a.trim());
+              return entry && entry.trim();
+            }).length;
+            const total = t.question_count || 0;
             return `
             <div class="ct-item">
               <div class="ct-info">
@@ -365,7 +519,8 @@
                 <a href="${t.mode === 'url' ? t.url : 'data:text/html;charset=utf-8,' + encodeURIComponent(t.html || '')}" target="_blank" class="btn btn-outline btn-sm">👁 Preview</a>
                 <button class="btn-danger" onclick="deleteTest('${t.id}')">🗑 Delete</button>
               </div>
-            </div>`}).join('')}
+            </div>`;
+          }).join('')}
         </div>`;
       }
 

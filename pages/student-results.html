@@ -174,21 +174,31 @@
 
         let answersHTML = '';
         if (r.answers && r.answers.length > 0) {
+          function getAlts(entry) {
+            if (!entry) return [];
+            // array-of-arrays: [["TRUE","T"], ...] — flatten one level
+            if (Array.isArray(entry)) {
+              const flat = entry.flat ? entry.flat() : [].concat(...entry);
+              return flat.map(a => String(a).trim()).filter(a => a);
+            }
+            return String(entry).trim() ? [String(entry).trim()] : [];
+          }
           answersHTML = `<div class="answers-grid">
             ${r.answers.map((ans, i) => {
-              const correct = ((r.correct_answers || [])[i] || '').trim();
-              if (!correct) {
+              const alts = getAlts((r.correct_answers || [])[i]);
+              if (!alts.length) {
                 return `<div class="answer-row">
                   <div class="answer-q">Q${i+1}</div>
                   <div class="answer-yours"><strong>Student:</strong> ${ans || '(blank)'}</div>
                   <div class="answer-icon">—</div>
                 </div>`;
               }
-              const ok = ans.trim().toLowerCase() === correct.toLowerCase();
+              const ok = alts.some(a => (ans || '').trim().toLowerCase() === a.toLowerCase());
+              const acceptedStr = alts.join(' / ');
               return `<div class="answer-row">
                 <div class="answer-q">Q${i+1}</div>
                 <div class="answer-yours" style="color:${ok ? 'var(--green)' : 'var(--red)'}"><strong>Student:</strong> ${ans || '(blank)'}</div>
-                ${!ok ? `<div class="answer-correct">✓ ${correct}</div>` : ''}
+                ${!ok ? `<div class="answer-correct">✓ ${acceptedStr}</div>` : ''}
                 <div class="answer-icon">${ok ? '✅' : '❌'}</div>
               </div>`;
             }).join('')}
@@ -215,4 +225,4 @@
       }
     </script>
   </body>
-</html>
+</html> 
