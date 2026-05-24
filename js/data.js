@@ -9,6 +9,7 @@ const DB = {
       if (error) { console.error("getUserResults error:", error); return []; }
       return (data || []).map(r => ({
         ...r,
+        test: r.test_name || r.test || "—",   // normalise: DB col is test_name
         date: r.date || (r.created_at ? new Date(r.created_at).toLocaleDateString() : "—"),
       }));
     } catch (e) {
@@ -25,7 +26,7 @@ const DB = {
 
       const { error } = await _supabase.from("results").insert({
         user_id:         userId,
-        test:            resultObj.test,
+        test_name:       resultObj.test,   // column in DB is test_name
         type:            resultObj.type,
         score:           resultObj.score,
         total:           resultObj.total,
@@ -67,6 +68,7 @@ const DB = {
       for (const row of data || []) {
         const r = {
           ...row,
+          test: row.test_name || row.test || "—",   // normalise DB col
           date: row.date || (row.created_at ? new Date(row.created_at).toLocaleDateString() : "—"),
         };
         if (!grouped[r.user_id]) grouped[r.user_id] = [];

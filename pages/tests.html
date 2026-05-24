@@ -68,7 +68,7 @@
     </main>
 
     <script>
-      let user, myResults = [];
+      let user, myResults = [], allTests = [];
 
       document.addEventListener('DOMContentLoaded', async () => {
         user = await Auth.initUser('student');
@@ -76,68 +76,70 @@
         renderHeader('tests.html');
 
         myResults = await DB.getUserResults(user.id);
+        allTests  = await DB.getTests();
 
-        // Load teacher-created tests from Supabase
-        const teacherTests = await DB.getTests();
-        const teacherReading   = teacherTests.filter(t => t.type === 'reading');
-        const teacherListening = teacherTests.filter(t => t.type === 'listening');
-
-        if (teacherReading.length) {
-          renderTeacherGrid(teacherReading, 'reading-teacher-grid');
-          document.getElementById('reading-teacher-section').style.display = 'block';
-          document.getElementById('reading-builtin-label').style.display   = 'none';
-        }
-        if (teacherListening.length) {
-          renderTeacherGrid(teacherListening, 'listening-teacher-grid');
-          document.getElementById('listening-teacher-section').style.display = 'block';
-          document.getElementById('listening-builtin-label').style.display   = 'none';
-        }
-
-        // Built-in placeholder cards
-        renderBuiltinPlaceholders('reading',   'reading-grid');
-        renderBuiltinPlaceholders('listening', 'listening-grid');
+        renderTab('reading');
+        renderTab('listening');
       });
 
-      function renderTeacherGrid(tests, gridId) {
-        const grid = document.getElementById(gridId);
-        grid.innerHTML = tests.map(t => {
-          const isRead = t.type === 'reading';
-          const attempts = myResults.filter(r => r.test === t.title);
-          const best = attempts.length ? Math.max(...attempts.map(r => bandScore(r.score, r.total))) : null;
-          const last = attempts[attempts.length - 1];
+      function renderTab(type) {
+        const tests = allTests.filter(t => t.type === type);
 
-          return `<div class="test-card">
-            <div class="tc-header">
-              <div class="tc-icon custom-${t.type}">${isRead ? '📖' : '🎧'}</div>
-              <div>
-                <div class="tc-title">${t.title}</div>
-                <div class="tc-meta">Teacher Test · ${t.question_count || '?'} Questions · ${t.mode === 'url' ? '🔗 External link' : '📄 Inline HTML'}</div>
-              </div>
-            </div>
-            <div class="tc-divider"></div>
-            <div class="tc-footer">
-              <div>
-                ${attempts.length
-                  ? `<div class="tc-attempted">✓ Attempted ${attempts.length}×</div>
-                     <div class="tc-score">Best: Band ${best} · Last: ${last.score}/${last.total}</div>`
-                  : `<span class="badge badge-gray">Not attempted</span>`}
-              </div>
-              <button class="btn btn-primary btn-sm" onclick="openTest('${t.id}')">
-                ${attempts.length ? 'Retake' : 'Start'}
-              </button>
-            </div>
-          </div>`;
-        }).join('');
-      }
+        const teacherSection  = document.getElementById(type + '-teacher-section');
+        const teacherGrid     = document.getElementById(type + '-teacher-grid');
+        const builtinLabel    = document.getElementById(type + '-builtin-label');
+        const builtinGrid     = document.getElementById(type + '-grid');
 
-      function renderBuiltinPlaceholders(type, gridId) {
-        document.getElementById(gridId).innerHTML = `
+        if (tests.length) {
+          // Show teacher section, hide the standalone builtin label
+          teacherSection.style.display = 'block';
+          builtinLabel.style.display   = 'none';
+          teacherGrid.innerHTML = tests.map(t => buildTestCard(t)).join('');
+        } else {
+          teacherSection.style.display = 'none';
+          builtinLabel.style.display   = 'block';
+        }
+
+        // Built-in placeholder (always shown below teacher tests)
+        builtinGrid.innerHTML = `
           <div style="color:var(--muted);padding:20px;font-size:14px">
             No built-in ${type} tests yet. Ask your teacher to add tests.
           </div>`;
       }
 
-      // ── KEY FIX: redirect to in-app test runner instead of window.open ──
+      function buildTestCard(t) {
+        const isRead   = t.type === 'reading';
+        const attempts = myResults.filter(r => (r.test || r.test_name) === t.title);
+        const best     = attempts.length ? Math.max(...attempts.map(r => bandScore(r.score, r.total))) : null;
+        const last     = attempts[attempts.length - 1];
+
+        return `<div class="test-card">
+          <div class="tc-header">
+            <div class="tc-icon custom-${t.type}">${isRead ? '📖' : '🎧'}</div>
+            <div>
+              <div class="tc-title">${t.title}</div>
+              <div class="tc-meta">
+                ${isRead ? '📖 Reading' : '🎧 Listening'} ·
+                ${t.question_count || '?'} Questions ·
+                ${t.mode === 'url' ? '🔗 External link' : '📄 Inline HTML'}
+              </div>
+            </div>
+          </div>
+          <div class="tc-divider"></div>
+          <div class="tc-footer">
+            <div>
+              ${attempts.length
+                ? `<div class="tc-attempted">✓ Attempted ${attempts.length}×</div>
+                   <div class="tc-score">Best: Band ${best} · Last: ${last.score}/${last.total}</div>`
+                : `<span class="badge badge-gray">Not attempted</span>`}
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openTest('${t.id}')">
+              ${attempts.length ? 'Retake' : 'Start'}
+            </button>
+          </div>
+        </div>`;
+      }
+
       function openTest(testId) {
         window.location.href = 'take-test.html?id=' + encodeURIComponent(testId);
       }

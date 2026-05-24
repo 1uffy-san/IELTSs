@@ -494,40 +494,70 @@
           el.innerHTML = `<div class="empty-state"><div class="es-icon">📋</div><h3>No tests yet</h3><p>Add your first test using the form.</p><button class="btn btn-primary" onclick="showSection('create')">Add Test</button></div>`;
           return;
         }
-        el.innerHTML = `<div class="custom-tests-list">
-          ${[...tests].reverse().map(t => {
-            // answer_key may be array-of-arrays (new) or array-of-strings (legacy)
+
+        // Group by type
+        const reading   = tests.filter(t => t.type === 'reading');
+        const listening = tests.filter(t => t.type === 'listening');
+
+        function buildList(list) {
+          return list.map(t => {
             const key = t.answer_key || [];
             const keyCount = key.filter(entry => {
               if (Array.isArray(entry)) return entry.some(a => a && a.trim());
               return entry && entry.trim();
             }).length;
             const total = t.question_count || 0;
+            const added = t.created_at ? new Date(t.created_at).toLocaleDateString() : '—';
             return `
-            <div class="ct-item">
+            <div class="ct-item" id="ct-${t.id}">
               <div class="ct-info">
                 <h3>${t.title}</h3>
                 <div class="ct-meta">
                   <span class="badge ${t.type === 'reading' ? 'badge-red' : 'badge-blue'}">${t.type === 'reading' ? '📖 Reading' : '🎧 Listening'}</span>
                   &nbsp;${total} questions ·
-                  ${t.mode === 'url' ? '🔗 URL' : '📄 Inline HTML'} ·
-                  🗝️ ${keyCount}/${total} answers keyed ·
-                  Added ${new Date(t.created_at).toLocaleDateString()}
+                  ${t.mode === 'url' ? '🔗 URL' : '📄 HTML'} ·
+                  🗝️ ${keyCount}/${total} keyed ·
+                  Added ${added}
                 </div>
               </div>
               <div class="ct-actions">
-                <a href="${t.mode === 'url' ? t.url : 'data:text/html;charset=utf-8,' + encodeURIComponent(t.html || '')}" target="_blank" class="btn btn-outline btn-sm">👁 Preview</a>
-                <button class="btn-danger" onclick="deleteTest('${t.id}')">🗑 Delete</button>
+                <a href="${t.mode === 'url' ? t.url : 'data:text/html;charset=utf-8,' + encodeURIComponent(t.html || '')}"
+                   target="_blank" class="btn btn-outline btn-sm">👁 Preview</a>
+                <button class="btn-danger" onclick="deleteTest('${t.id}', '${t.title.replace(/'/g,"\\'")}')">🗑 Delete</button>
               </div>
             </div>`;
-          }).join('')}
-        </div>`;
+          }).join('');
+        }
+
+        let html = '<div class="custom-tests-list">';
+        if (reading.length) {
+          html += `<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:8px 0 10px">📖 Reading Tests (${reading.length})</div>`;
+          html += buildList(reading);
+        }
+        if (listening.length) {
+          html += `<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:20px 0 10px">🎧 Listening Tests (${listening.length})</div>`;
+          html += buildList(listening);
+        }
+        html += '</div>';
+        el.innerHTML = html;
       }
 
-      async function deleteTest(id) {
-        if (!confirm('Delete this test? Students who have taken it will keep their results.')) return;
-        await DB.deleteTest(id);
-        renderManage();
+      async function deleteTest(id, title) {
+        if (!confirm(`Delete "${title}"?\n\nStudents who already took it will keep their results.`)) return;
+        const btn = document.querySelector(`#ct-${id} .btn-danger`);
+        if (btn) { btn.textContent = 'Deleting…'; btn.disabled = true; }
+        const result = await DB.deleteTest(id);
+        if (result.ok) {
+          const item = document.getElementById('ct-' + id);
+          if (item) {
+            item.style.transition = 'opacity .3s';
+            item.style.opacity = '0';
+            setTimeout(() => renderManage(), 350);
+          }
+        } else {
+          alert('Delete failed: ' + result.error);
+          renderManage();
+        }
       }
     </script>
   </body>
