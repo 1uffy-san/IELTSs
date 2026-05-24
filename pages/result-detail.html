@@ -209,7 +209,7 @@
           </div>`;
         }).join('');
 
-        document.title = r.test + ' — IELTS Master';
+        document.title = (r.test || r.test_name || 'Result') + ' — IELTS Master';
 
         document.getElementById('content').innerHTML = `
           <!-- Hero -->
@@ -220,7 +220,7 @@
             </div>
             <div class="rh-divider"></div>
             <div class="rh-meta">
-              <div class="rh-title">${r.test}</div>
+              <div class="rh-title">${r.test || r.test_name || "—"}</div>
               <div class="rh-sub">${typeLabel} · ${r.date}</div>
               <div class="rh-stats">
                 <div>

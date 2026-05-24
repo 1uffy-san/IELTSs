@@ -243,58 +243,11 @@
         user = await Auth.initUser("student");
         if (!user) return;
         renderHeader("results.html");
-
-        // Debug: surface Supabase errors that are normally swallowed
-        try {
-          const { data: { session } } = await _supabase.auth.getSession();
-          const uid = session?.user?.id;
-          const { data, error } = await _supabase
-            .from("results").select("*")
-            .eq("user_id", uid).order("id", { ascending: true });
-
-          if (error) {
-            showDebug("Supabase error: " + error.message + " (code: " + error.code + ").<br>" +
-              "This is a <strong>Row-Level Security (RLS)</strong> policy issue.<br>" +
-              "Fix: Supabase Dashboard → Table Editor → <code>results</code> table → RLS Policies → Add policy:<br>" +
-              "<code>Operation: SELECT &nbsp; Target: Authenticated &nbsp; USING: auth.uid() = user_id</code>");
-            results = [];
-          } else if (!data || data.length === 0) {
-            showDebug("Query OK but 0 rows returned for user_id = <code>" + uid + "</code>.<br>" +
-              "Either no tests taken yet, or RLS is silently blocking reads.<br>" +
-              "Fix: Supabase → Table Editor → <code>results</code> → Policies → add SELECT policy: <code>auth.uid() = user_id</code>");
-            results = [];
-          } else {
-            hideDebug();
-            results = data.map(r => ({
-              ...r,
-              date: r.date || (r.created_at ? new Date(r.created_at).toLocaleDateString() : "—"),
-            }));
-          }
-        } catch(e) {
-          showDebug("Exception: " + e.message);
-          results = [];
-        }
-
+        results = await DB.getUserResults(user.id);
         renderSummary();
         renderChart();
         renderTable();
       });
-
-      function showDebug(html) {
-        let el = document.getElementById("debug-banner");
-        if (!el) {
-          el = document.createElement("div");
-          el.id = "debug-banner";
-          el.style.cssText = "background:#fef3c7;border:2px solid #f59e0b;border-radius:10px;padding:16px 20px;margin-bottom:20px;font-size:13px;line-height:1.8;color:#92400e;";
-          const main = document.querySelector(".app-main");
-          main.insertBefore(el, main.firstChild);
-        }
-        el.innerHTML = "<strong>🔍 Debug info:</strong><br>" + html;
-      }
-      function hideDebug() {
-        const el = document.getElementById("debug-banner");
-        if (el) el.remove();
-      }
 
       function renderSummary() {
         const rCt = results.filter((r) => r.type === "reading").length;
@@ -370,14 +323,18 @@
       .map((r) => {
         const band = bandScore(r.score, r.total);
         const pct = pctScore(r.score, r.total);
-        return `<tr class="result-row" onclick="toggleDetail(${r.origIdx})">
-        <td style="font-weight:600">${r.test}</td>
+        return `<tr class="result-row">
+        <td style="font-weight:600">${r.test || r.test_name || "—"}</td>
         <td><span class="badge ${r.type === "reading" ? "badge-red" : "badge-blue"}">${r.type === "reading" ? "📖 Reading" : "🎧 Listening"}</span></td>
         <td>${r.score}/${r.total}</td>
         <td style="font-weight:800;color:${bandColor(pct)}">Band ${band}</td>
         <td><div style="display:flex;align-items:center;gap:8px"><div style="width:60px;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${bandColor(pct)};border-radius:3px"></div></div>${pct}%</div></td>
         <td style="color:var(--muted)">${r.date}</td>
-        <td><span style="color:var(--muted);font-size:16px">${selectedIdx === r.origIdx ? "▲" : "▼"}</span></td>
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="toggleDetail(${r.origIdx})" style="min-width:80px">
+            ${selectedIdx === r.origIdx ? "▲ Close" : "▼ Review"}
+          </button>
+        </td>
       </tr>`;
       })
       .join("")}
@@ -403,8 +360,11 @@
         if (r.answers && r.answers.length > 0) {
           function getAlts(entry) {
             if (!entry) return [];
-            if (Array.isArray(entry)) return entry.map(a => a.trim()).filter(a => a);
-            return entry.trim() ? [entry.trim()] : [];
+            if (Array.isArray(entry)) {
+              const flat = entry.flat ? entry.flat() : [].concat(...entry);
+              return flat.map(a => String(a).trim()).filter(a => a);
+            }
+            return String(entry).trim() ? [String(entry).trim()] : [];
           }
           answersHTML = `<div class="answers-grid">
       ${r.answers
@@ -432,7 +392,7 @@
         panel.innerHTML = `
     <div class="detail-header">
       <div>
-        <div class="detail-title">${r.test}</div>
+        <div class="detail-title">${r.test || r.test_name || "—"}</div>
         <div class="detail-meta">${r.type === "reading" ? "📖 Reading" : "🎧 Listening"} · ${r.date}</div>
       </div>
       <div style="text-align:right">

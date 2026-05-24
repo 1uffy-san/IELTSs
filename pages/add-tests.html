@@ -259,6 +259,7 @@
 
     <script>
       let currentMode = 'url';
+      let allTests = [];
 
       document.addEventListener('DOMContentLoaded', async () => {
         const user = await Auth.initUser('teacher');
@@ -489,6 +490,7 @@
       /* ── Manage tab ── */
       async function renderManage() {
         const tests = await DB.getTests();
+        allTests = tests;
         const el = document.getElementById('manage-list');
         if (!tests.length) {
           el.innerHTML = `<div class="empty-state"><div class="es-icon">📋</div><h3>No tests yet</h3><p>Add your first test using the form.</p><button class="btn btn-primary" onclick="showSection('create')">Add Test</button></div>`;
@@ -521,8 +523,7 @@
                 </div>
               </div>
               <div class="ct-actions">
-                <a href="${t.mode === 'url' ? t.url : 'data:text/html;charset=utf-8,' + encodeURIComponent(t.html || '')}"
-                   target="_blank" class="btn btn-outline btn-sm">👁 Preview</a>
+                <button class="btn btn-outline btn-sm" onclick="previewTest('${t.id}')">👁 Preview</button>
                 <button class="btn-danger" onclick="deleteTest('${t.id}', '${t.title.replace(/'/g,"\\'")}')">🗑 Delete</button>
               </div>
             </div>`;
@@ -540,6 +541,21 @@
         }
         html += '</div>';
         el.innerHTML = html;
+      }
+
+      function previewTest(id) {
+        const t = allTests.find(x => x.id === id);
+        if (!t) return;
+        if (t.mode === 'url' && t.url) {
+          window.open(t.url, '_blank');
+        } else if (t.mode === 'html' && t.html) {
+          const w = window.open('', '_blank');
+          w.document.open();
+          w.document.write(t.html);
+          w.document.close();
+        } else {
+          alert('No content available to preview.');
+        }
       }
 
       async function deleteTest(id, title) {
