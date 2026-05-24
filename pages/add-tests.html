@@ -511,7 +511,7 @@
             const total = t.question_count || 0;
             const added = t.created_at ? new Date(t.created_at).toLocaleDateString() : '—';
             return `
-            <div class="ct-item" id="ct-${t.id}">
+            <div class="ct-item" data-id="${t.id}" id="ct-${t.id}">
               <div class="ct-info">
                 <h3>${t.title}</h3>
                 <div class="ct-meta">
@@ -560,7 +560,7 @@
 
       async function deleteTest(id, title) {
         if (!confirm(`Delete "${title}"?\n\nStudents who already took it will keep their results.`)) return;
-        const btn = document.querySelector(`#ct-${id} .btn-danger`);
+        const btn = document.querySelector(`[data-id="${id}"] .btn-danger`);
         if (btn) { btn.textContent = 'Deleting…'; btn.disabled = true; }
         const result = await DB.deleteTest(id);
         if (result.ok) {

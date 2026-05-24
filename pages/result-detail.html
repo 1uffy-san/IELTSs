@@ -107,7 +107,7 @@
   <body>
     <header class="app-header" id="app-header"></header>
     <main class="app-main" id="main">
-      <a href="results.html" class="back-link">← Back to My Results</a>
+      <a href="results.html" class="back-link">← Back</a>
       <div id="content">
         <div style="text-align:center;padding:80px;color:var(--muted)">
           <div style="font-size:36px;margin-bottom:12px">⏳</div>
@@ -118,9 +118,19 @@
 
     <script>
       document.addEventListener('DOMContentLoaded', async () => {
-        const user = await Auth.initUser('student');
-        if (!user) return;
-        renderHeader('results.html');
+        // Allow both students (own results) and teachers (any student's results)
+        const user = await Auth.currentUser();
+        if (!user) { window.location.href = '../index.html'; return; }
+        window.__user = user;
+
+        const isTeacher = user.role === 'teacher';
+        // Back-link destination differs by role
+        const backHref = isTeacher ? 'students.html' : 'results.html';
+        document.querySelector('.back-link').href = backHref;
+        document.querySelector('.back-link').textContent =
+          isTeacher ? '← Back to Students' : '← Back to My Results';
+
+        renderHeader(isTeacher ? 'students.html' : 'results.html');
 
         const params = new URLSearchParams(window.location.search);
         const uid = params.get('uid');
@@ -130,7 +140,8 @@
           showError('Missing result parameters.');
           return;
         }
-        if (uid !== user.id) {
+        // Students may only view their own results; teachers can view any
+        if (!isTeacher && uid !== user.id) {
           showError('You can only view your own results.');
           return;
         }

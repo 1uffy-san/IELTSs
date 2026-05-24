@@ -72,7 +72,7 @@
 
       function render() {
         const initials  = student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-        const avatarHTML = student.picture ? `<img src="${student.picture}" alt="${student.name}">` : initials;
+        const avatarHTML = initials;
         const rCt  = results.filter(r => r.type === 'reading').length;
         const lCt  = results.filter(r => r.type === 'listening').length;
         const best = results.length ? Math.max(...results.map(r => bandScore(r.score, r.total))) : null;
@@ -85,7 +85,7 @@
             <div class="hero-avatar">${avatarHTML}</div>
             <div>
               <div class="hero-name">${student.name}</div>
-              <div class="hero-email">${student.email} · <span class="badge ${student.provider === 'google' ? 'badge-blue' : 'badge-gray'}">${student.provider === 'google' ? '🔑 Google' : '✉️ Email'}</span></div>
+              <div class="hero-email">${student.email} · <span class="badge badge-gray">✉️ Email</span></div>
             </div>
           </div>
 
@@ -225,4 +225,4 @@
       }
     </script>
   </body>
-</html> 
+</html>

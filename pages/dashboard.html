@@ -185,7 +185,7 @@
                 return `<tr>
                 <td><strong>${s.name}</strong></td>
                 <td style="color:var(--muted)">${s.email}</td>
-                <td><span class="badge ${s.provider === "google" ? "badge-blue" : "badge-gray"}">${s.provider === "google" ? "🔑 Google" : "✉️ Email"}</span></td>
+                <td><span class="badge badge-gray">✉️ Email</span></td>
                 <td><span class="badge badge-blue">${res.length}</span></td>
                 <td style="font-weight:700">${last ? "Band " + bandScore(last.score, last.total) : "—"}</td>
                 <td><a href="student-results.html?sid=${s.id}" class="btn btn-outline btn-sm">View Results</a></td>

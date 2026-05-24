@@ -129,7 +129,7 @@
           const lCt  = res.filter(r => r.type === 'listening').length;
           const best = res.length ? Math.max(...res.map(r => bandScore(r.score, r.total))) : null;
           const initials = s.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-          const avatarHTML = s.picture ? `<img src="${s.picture}" alt="${s.name}">` : initials;
+          const avatarHTML = initials;
           const joined = s.created_at
             ? new Date(s.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })
             : '—';
@@ -140,7 +140,7 @@
                 <div class="sc-name">${s.name}</div>
                 <div class="sc-email">${s.email}</div>
               </div>
-              <span class="badge ${s.provider === 'google' ? 'badge-blue' : 'badge-gray'}" style="margin-left:auto">${s.provider === 'google' ? 'Google' : 'Email'}</span>
+              <span class="badge badge-gray" style="margin-left:auto">Email</span>
             </div>
             <div class="sc-stats">
               <div class="sc-stat"><div class="sc-stat-num">${rCt}</div><div class="sc-stat-label">Reading</div></div>
@@ -161,7 +161,7 @@
         if (!s) return;
 
         const initials  = s.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-        const avatarHTML = s.picture ? `<img src="${s.picture}" alt="${s.name}">` : initials;
+        const avatarHTML = initials;
         const rCt  = res.filter(r => r.type === 'reading').length;
         const lCt  = res.filter(r => r.type === 'listening').length;
         const best = res.length ? Math.max(...res.map(r => bandScore(r.score, r.total))) : null;
@@ -170,7 +170,7 @@
           <div class="m-avatar">${avatarHTML}</div>
           <div>
             <div class="modal-title">${s.name}</div>
-            <div class="modal-sub">${s.email} · ${s.provider === 'google' ? 'Google' : 'Email'} account</div>
+            <div class="modal-sub">${s.email} · Email account</div>
           </div>
           <button class="modal-close" onclick="closeModal()">✕</button>`;
 

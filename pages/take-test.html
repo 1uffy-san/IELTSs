@@ -168,7 +168,8 @@
             <div>Loading test content…</div>
           </div>
           <iframe class="test-iframe" id="test-iframe"
-            sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+            allow="autoplay; fullscreen"></iframe>
         </div>
 
         <div class="answer-panel">
@@ -237,6 +238,10 @@
         badge.className   = `badge ${isRead ? 'badge-red' : 'badge-blue'}`;
 
         questionCount = parseInt(test.question_count) || 13;
+        if (questionCount === 0) {
+          showError('This test has no questions configured. Please contact your teacher.');
+          return;
+        }
         buildAnswerInputs(questionCount);
         loadContent();
 

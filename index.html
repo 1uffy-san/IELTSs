@@ -20,9 +20,6 @@
       .auth-tabs { display:flex; background:#f3f4f6; border-radius:8px; padding:4px; margin-bottom:26px; }
       .auth-tab  { flex:1; padding:9px; border-radius:6px; border:none; background:none; cursor:pointer; font-size:14px; font-weight:600; font-family:inherit; color:var(--muted); transition:.2s; }
       .auth-tab.active { background:#fff; color:var(--text); box-shadow:0 1px 4px rgba(0,0,0,.1); }
-      .google-btn { width:100%; padding:12px; border:1.5px solid #dadce0; background:#fff; color:#3c4043; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; transition:.2s; font-family:inherit; }
-      .google-btn:hover { background:#f8f9fa; box-shadow:0 1px 4px rgba(0,0,0,.15); }
-      .google-btn svg { width:20px; height:20px; flex-shrink:0; }
       .role-selector { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px; }
       .role-option { border:2px solid var(--border); border-radius:8px; padding:14px 10px; text-align:center; cursor:pointer; transition:.2s; }
       .role-option:hover { border-color:var(--red); }
@@ -147,14 +144,6 @@
         document.getElementById('alert-box').className = 'alert hidden';
       }
 
-      // ── Google login via OAuth redirect (works in all browsers) ──
-      async function doGoogleLogin(role) {
-        showAlert('Redirecting to Google…', 'info');
-        const result = await Auth.loginWithGoogle(role);
-        if (!result.ok) showAlert(result.error);
-        // If ok, browser is redirecting — nothing more to do
-      }
-
       async function doEmailLogin() {
         const email    = document.getElementById('login-email').value.trim();
         const password = document.getElementById('login-password').value;
@@ -162,11 +151,7 @@
         showAlert('Signing in…', 'info');
         const result = await Auth.loginEmail(email, password);
         if (result.ok) {
-          if (result.magicLink) {
-            showAlert('Check your email for a magic link to complete teacher sign-in.', 'info');
-          } else {
-            redirect();
-          }
+          redirect();
         } else {
           if (result.error.includes('Email not confirmed')) {
             showAlert('Please check your email and click the confirmation link first, then try logging in again.');
@@ -186,7 +171,7 @@
         if (!email) { showAlert('Please enter your email.');       return; }
 
         const isTeacher = selectedRole === 'teacher';
-        if (isTeacher && password !== 'Gitpush4611') {
+        if (isTeacher && !Auth.isTeacherCode(password)) {
           showAlert('Incorrect teacher code. Please enter the code provided by your school.');
           return;
         }

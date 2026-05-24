@@ -215,13 +215,13 @@
             <select
               class="filter-select"
               id="filter-type"
-              onchange="renderTable()"
+              onchange="selectedIdx = null; document.getElementById('detail-panel').classList.remove('open'); renderTable()"
             >
               <option value="all">All Types</option>
               <option value="reading">📖 Reading</option>
               <option value="listening">🎧 Listening</option>
             </select>
-            <select class="filter-select" id="sort-by" onchange="renderTable()">
+            <select class="filter-select" id="sort-by" onchange="selectedIdx = null; document.getElementById('detail-panel').classList.remove('open'); renderTable()">
               <option value="date-desc">Newest First</option>
               <option value="date-asc">Oldest First</option>
               <option value="band-desc">Best Band</option>
