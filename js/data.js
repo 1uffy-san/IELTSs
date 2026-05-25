@@ -20,9 +20,7 @@ const DB = {
 
   async saveResult(userId, resultObj) {
     try {
-      const correctAnswers =
-        resultObj.correctAnswers || resultObj.correct_answers || [];
-
+      const correctAnswers = resultObj.correctAnswers || resultObj.correct_answers || [];
       const { error } = await _supabase.from("results").insert({
         user_id:         userId,
         test_name:       resultObj.test,
@@ -78,8 +76,8 @@ const DB = {
     }
   },
 
-  // ✅ NEW: Lightweight fetch — excludes heavy 'html' and 'answer_key' columns.
-  // Use this for listing tests (tests.html, dashboard, etc.)
+  // Lightweight — excludes heavy 'html' and 'answer_key' columns.
+  // Use for listing tests (tests.html, dashboard, etc.)
   async getTestsMeta() {
     try {
       const { data, error } = await _supabase
@@ -94,7 +92,7 @@ const DB = {
     }
   },
 
-  // Full fetch including html/answer_key — only use when actually taking a test
+  // Full fetch — only used in add-tests.html manage tab
   async getTests() {
     try {
       const { data, error } = await _supabase
@@ -109,28 +107,36 @@ const DB = {
     }
   },
 
-  // ✅ Fetches a single test by ID — used in take-test.html
- async getTest(testId) {
-  try {
-    // ✅ FIX 2: Return cached version if already fetched this session
-    const cached = sessionStorage.getItem('test_' + testId);
-    if (cached) return JSON.parse(cached);
+  // Single test fetch with sessionStorage caching — used in take-test.html
+  async getTest(testId) {
+    try {
+      try {
+        const cached = sessionStorage.getItem('test_' + testId);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.id) return parsed;
+        }
+      } catch (_) {
+        sessionStorage.removeItem('test_' + testId);
+      }
 
-    const { data, error } = await _supabase
-      .from("tests")
-      .select("*")
-      .eq("id", testId)
-      .single();
-    if (error) { console.error("getTest error:", error); return null; }
+      const { data, error } = await _supabase
+        .from("tests")
+        .select("*")
+        .eq("id", testId)
+        .single();
+      if (error) { console.error("getTest error:", error); return null; }
 
-    // Cache it for this session
-    if (data) sessionStorage.setItem('test_' + testId, JSON.stringify(data));
-    return data || null;
-  } catch (e) {
-    console.error("getTest error:", e);
-    return null;
-  }
-},,
+      try {
+        if (data) sessionStorage.setItem('test_' + testId, JSON.stringify(data));
+      } catch (_) {}
+
+      return data || null;
+    } catch (e) {
+      console.error("getTest error:", e);
+      return null;
+    }
+  },
 
   async saveTest(testObj) {
     try {
@@ -148,6 +154,7 @@ const DB = {
 
   async deleteTest(testId) {
     try {
+      try { sessionStorage.removeItem('test_' + testId); } catch (_) {}
       const { error } = await _supabase.from("tests").delete().eq("id", testId);
       if (error) { console.error("deleteTest error:", error); return { ok: false, error: error.message }; }
       return { ok: true };
@@ -157,7 +164,6 @@ const DB = {
     }
   },
 };
-
 
 function bandScore(score, total) {
   const pct = pctScore(score, total);

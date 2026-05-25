@@ -10,332 +10,96 @@
     <script src="../js/auth.js" defer></script>
     <script src="../js/data.js" defer></script>
     <style>
-      .take-test-wrap {
-        display: flex;
-        flex-direction: column;
-        height: calc(100vh - 60px);
-      }
-      .top-bar {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        padding: 12px 24px;
+      .take-test-wrap { display:flex; flex-direction:column; height:calc(100vh - 60px); }
+      .top-bar { display:flex; align-items:center; gap:14px; padding:12px 24px; background:#fff; border-bottom:1.5px solid var(--border); flex-shrink:0; flex-wrap:wrap; }
+      .top-bar-title { font-size:15px; font-weight:700; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .top-bar-badge { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+      .timer-pill { display:flex; align-items:center; gap:6px; background:var(--bg,#f8f9fa); border:1.5px solid var(--border); border-radius:20px; padding:6px 14px; font-size:14px; font-weight:700; font-variant-numeric:tabular-nums; flex-shrink:0; }
+      .timer-pill.urgent { background:#fef2f2; border-color:var(--red); color:var(--red); }
+      .timer-dot { width:8px; height:8px; border-radius:50%; background:var(--green,#16a34a); animation:blink 1s infinite; }
+      .timer-pill.urgent .timer-dot { background:var(--red); }
+      @keyframes blink { 50%{opacity:.3} }
+      .progress-strip { height:3px; background:var(--border); flex-shrink:0; }
+      .progress-fill { height:100%; background:var(--red); transition:width 1s linear; }
+      .answer-panel { width:360px; min-width:280px; max-width:400px; background:#fff; border-left:1.5px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; overflow:hidden; }
+      .answer-panel-head { padding:16px 20px 12px; border-bottom:1px solid var(--border); font-weight:700; font-size:14px; background:var(--bg,#f8f9fa); flex-shrink:0; }
+      .answer-panel-head small { font-weight:400; color:var(--muted); font-size:12px; display:block; margin-top:2px; }
+      .answers-scroll { overflow-y:auto; flex:1; padding:14px 16px; display:flex; flex-direction:column; gap:8px; }
+      .q-row { display:flex; align-items:center; gap:8px; }
+      .q-num { font-size:12px; font-weight:700; color:var(--muted); min-width:28px; text-align:right; }
+      .q-input { flex:1; border:1.5px solid var(--border); border-radius:7px; padding:7px 10px; font-size:13px; font-family:inherit; outline:none; transition:.18s; background:#fff; }
+      .q-input:focus { border-color:var(--red); }
+      .q-input.filled { background:#f0fdf4; border-color:#86efac; }
+      .submit-footer { padding:14px 16px; border-top:1px solid var(--border); background:#fff; flex-shrink:0; }
+      .filled-count { font-size:12px; color:var(--muted); margin-bottom:8px; }
+      .content-area { display:flex; flex:1; overflow:hidden; }
+      .iframe-wrap { flex:1; overflow:hidden; position:relative; }
+      .test-iframe { width:100%; height:100%; border:none; display:block; }
+      .iframe-cover { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:12px; background:var(--bg,#f8f9fa); color:var(--muted); font-size:15px; }
+      .iframe-cover .spin { font-size:36px; animation:spin 1.2s linear infinite; }
+      @keyframes spin { to{transform:rotate(360deg)} }
+
+      /* ── Article / Passage layout ── */
+      .article-wrap {
+        flex: 1; overflow-y: auto; padding: 28px 32px;
         background: #fff;
-        border-bottom: 1.5px solid var(--border);
-        flex-shrink: 0;
-        flex-wrap: wrap;
+        border-right: 1.5px solid var(--border);
       }
-      .top-bar-title {
-        font-size: 15px;
-        font-weight: 700;
-        flex: 1;
-        min-width: 0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+      .article-audio-bar {
+        display: flex; align-items: center; gap: 12px;
+        background: #f0f4ff; border: 1.5px solid #c7d8f8;
+        border-radius: 10px; padding: 12px 16px;
+        margin-bottom: 20px;
       }
-      .top-bar-badge {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-shrink: 0;
+      .article-audio-bar audio { flex: 1; }
+      .article-audio-label { font-size: 13px; font-weight: 700; color: #1A5276; white-space: nowrap; }
+      .article-heading {
+        font-family: var(--font-display, 'Playfair Display', serif);
+        font-size: 22px; font-weight: 800;
+        line-height: 1.3; margin-bottom: 18px;
+        color: var(--text, #1a1a2e);
+        border-bottom: 2px solid var(--red, #C0392B);
+        padding-bottom: 12px;
       }
-
-      .timer-pill {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        background: var(--bg, #f8f9fa);
-        border: 1.5px solid var(--border);
-        border-radius: 20px;
-        padding: 6px 14px;
-        font-size: 14px;
-        font-weight: 700;
-        font-variant-numeric: tabular-nums;
-        flex-shrink: 0;
+      .article-body {
+        font-size: 15px; line-height: 1.85;
+        color: var(--text, #1a1a2e);
       }
-      .timer-pill.urgent {
-        background: #fef2f2;
-        border-color: var(--red);
-        color: var(--red);
+      .article-body p {
+        margin-bottom: 16px;
       }
-      .timer-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--green, #16a34a);
-        animation: blink 1s infinite;
+      @media(max-width:700px){
+        .article-wrap { padding: 16px; border-right: none; border-bottom: 1.5px solid var(--border); max-height: 45vh; }
+        .article-heading { font-size: 18px; }
+        .article-body { font-size: 14px; }
       }
-      .timer-pill.urgent .timer-dot {
-        background: var(--red);
-      }
-      @keyframes blink {
-        50% {
-          opacity: 0.3;
-        }
-      }
-
-      .progress-strip {
-        height: 3px;
-        background: var(--border);
-        flex-shrink: 0;
-      }
-      .progress-fill {
-        height: 100%;
-        background: var(--red);
-        transition: width 1s linear;
-      }
-
-      .answer-panel {
-        width: 360px;
-        min-width: 280px;
-        max-width: 400px;
-        background: #fff;
-        border-left: 1.5px solid var(--border);
-        display: flex;
-        flex-direction: column;
-        flex-shrink: 0;
-        overflow: hidden;
-      }
-      .answer-panel-head {
-        padding: 16px 20px 12px;
-        border-bottom: 1px solid var(--border);
-        font-weight: 700;
-        font-size: 14px;
-        background: var(--bg, #f8f9fa);
-        flex-shrink: 0;
-      }
-      .answer-panel-head small {
-        font-weight: 400;
-        color: var(--muted);
-        font-size: 12px;
-        display: block;
-        margin-top: 2px;
-      }
-      .answers-scroll {
-        overflow-y: auto;
-        flex: 1;
-        padding: 14px 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-      .q-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .q-num {
-        font-size: 12px;
-        font-weight: 700;
-        color: var(--muted);
-        min-width: 28px;
-        text-align: right;
-      }
-      .q-input {
-        flex: 1;
-        border: 1.5px solid var(--border);
-        border-radius: 7px;
-        padding: 7px 10px;
-        font-size: 13px;
-        font-family: inherit;
-        outline: none;
-        transition: 0.18s;
-        background: #fff;
-      }
-      .q-input:focus {
-        border-color: var(--red);
-      }
-      .q-input.filled {
-        background: #f0fdf4;
-        border-color: #86efac;
-      }
-
-      .submit-footer {
-        padding: 14px 16px;
-        border-top: 1px solid var(--border);
-        background: #fff;
-        flex-shrink: 0;
-      }
-      .filled-count {
-        font-size: 12px;
-        color: var(--muted);
-        margin-bottom: 8px;
-      }
-
-      .content-area {
-        display: flex;
-        flex: 1;
-        overflow: hidden;
-      }
-      .iframe-wrap {
-        flex: 1;
-        overflow: hidden;
-        position: relative;
-      }
-      .test-iframe {
-        width: 100%;
-        height: 100%;
-        border: none;
-        display: block;
-      }
-      .iframe-cover {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-        gap: 12px;
-        background: var(--bg, #f8f9fa);
-        color: var(--muted);
-        font-size: 15px;
-      }
-      .iframe-cover .spin {
-        font-size: 36px;
-        animation: spin 1.2s linear infinite;
-      }
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
-      .result-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 200;
-        align-items: center;
-        justify-content: center;
-      }
-      .result-overlay.open {
-        display: flex;
-      }
-      .result-modal {
-        background: #fff;
-        border-radius: 18px;
-        padding: 36px 40px;
-        max-width: 520px;
-        width: 92%;
-        max-height: 90vh;
-        overflow-y: auto;
-        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
-        animation: pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
-      @keyframes pop {
-        from {
-          transform: scale(0.85);
-          opacity: 0;
-        }
-      }
-      .result-band {
-        font-size: 64px;
-        font-weight: 800;
-        line-height: 1;
-        margin-bottom: 4px;
-      }
-      .result-sub {
-        font-size: 16px;
-        color: var(--muted);
-        margin-bottom: 24px;
-      }
-      .result-stats {
-        display: flex;
-        justify-content: center;
-        gap: 28px;
-        margin-bottom: 24px;
-        flex-wrap: wrap;
-      }
-      .rs-item {
-        text-align: center;
-      }
-      .rs-num {
-        font-size: 24px;
-        font-weight: 700;
-      }
-      .rs-label {
-        font-size: 12px;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-
-      .review-title {
-        font-size: 14px;
-        font-weight: 700;
-        margin-bottom: 10px;
-        margin-top: 4px;
-        text-align: left;
-      }
-      .review-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        gap: 8px;
-        margin-bottom: 24px;
-      }
-      .review-row {
-        display: flex;
-        align-items: flex-start;
-        gap: 8px;
-        border-radius: 8px;
-        padding: 9px 11px;
-        font-size: 13px;
-      }
-      .review-row.correct {
-        background: #f0fdf4;
-      }
-      .review-row.wrong {
-        background: #fef2f2;
-      }
-      .review-row.no-key {
-        background: #f8f9fa;
-      }
-      .review-q {
-        font-weight: 700;
-        min-width: 26px;
-      }
-      .review-body {
-        flex: 1;
-        line-height: 1.5;
-      }
-      .review-correct {
-        color: var(--green, #16a34a);
-        font-size: 12px;
-      }
-      .review-icon {
-        font-size: 15px;
-        flex-shrink: 0;
-      }
-
-      .result-actions {
-        display: flex;
-        gap: 10px;
-        justify-content: center;
-        flex-wrap: wrap;
-      }
-
-      @media (max-width: 700px) {
-        .content-area {
-          flex-direction: column;
-        }
-        .answer-panel {
-          width: 100%;
-          max-width: 100%;
-          border-left: none;
-          border-top: 1.5px solid var(--border);
-          max-height: 45vh;
-        }
-        .iframe-wrap {
-          min-height: 200px;
-        }
-        .top-bar-title {
-          font-size: 13px;
-        }
-        .result-modal {
-          padding: 24px 20px;
-        }
+      .result-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:200; align-items:center; justify-content:center; }
+      .result-overlay.open { display:flex; }
+      .result-modal { background:#fff; border-radius:18px; padding:36px 40px; max-width:520px; width:92%; max-height:90vh; overflow-y:auto; box-shadow:0 24px 64px rgba(0,0,0,.25); animation:pop .3s cubic-bezier(.34,1.56,.64,1); }
+      @keyframes pop { from{transform:scale(.85);opacity:0} }
+      .result-band { font-size:64px; font-weight:800; line-height:1; margin-bottom:4px; }
+      .result-sub { font-size:16px; color:var(--muted); margin-bottom:24px; }
+      .result-stats { display:flex; justify-content:center; gap:28px; margin-bottom:24px; flex-wrap:wrap; }
+      .rs-item { text-align:center; }
+      .rs-num { font-size:24px; font-weight:700; }
+      .rs-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+      .review-title { font-size:14px; font-weight:700; margin-bottom:10px; margin-top:4px; text-align:left; }
+      .review-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:8px; margin-bottom:24px; }
+      .review-row { display:flex; align-items:flex-start; gap:8px; border-radius:8px; padding:9px 11px; font-size:13px; }
+      .review-row.correct { background:#f0fdf4; }
+      .review-row.wrong { background:#fef2f2; }
+      .review-row.no-key { background:#f8f9fa; }
+      .review-q { font-weight:700; min-width:26px; }
+      .review-body { flex:1; line-height:1.5; }
+      .review-correct { color:var(--green,#16a34a); font-size:12px; }
+      .review-icon { font-size:15px; flex-shrink:0; }
+      .result-actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+      @media(max-width:700px){
+        .content-area { flex-direction:column; }
+        .answer-panel { width:100%; max-width:100%; border-left:none; border-top:1.5px solid var(--border); max-height:45vh; }
+        .iframe-wrap { min-height:200px; }
+        .top-bar-title { font-size:13px; }
+        .result-modal { padding:24px 20px; }
       }
     </style>
   </head>
@@ -351,28 +115,23 @@
             <div class="timer-dot"></div>
             <span id="timer-text">--:--</span>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="confirmSubmit()">
-            Submit ✓
-          </button>
+          <button class="btn btn-primary btn-sm" onclick="confirmSubmit()">Submit ✓</button>
         </div>
       </div>
 
       <div class="progress-strip">
-        <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+        <div class="progress-fill" id="progress-fill" style="width:0%"></div>
       </div>
 
       <div class="content-area">
-        <div class="iframe-wrap">
+        <div class="iframe-wrap" id="iframe-wrap">
           <div class="iframe-cover" id="iframe-cover">
             <div class="spin">⏳</div>
             <div>Loading test content…</div>
           </div>
-          <iframe
-            class="test-iframe"
-            id="test-iframe"
+          <iframe class="test-iframe" id="test-iframe"
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-            allow="autoplay; fullscreen"
-          ></iframe>
+            allow="autoplay; fullscreen"></iframe>
         </div>
 
         <div class="answer-panel">
@@ -383,33 +142,17 @@
           <div class="answers-scroll" id="answers-scroll"></div>
           <div class="submit-footer">
             <div class="filled-count" id="filled-count">0 of 0 answered</div>
-            <button
-              class="btn btn-primary"
-              style="width: 100%"
-              onclick="confirmSubmit()"
-            >
-              Submit Test ✓
-            </button>
+            <button class="btn btn-primary" style="width:100%" onclick="confirmSubmit()">Submit Test ✓</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Result overlay -->
     <div class="result-overlay" id="result-overlay">
       <div class="result-modal">
-        <div
-          style="font-size: 48px; margin-bottom: 8px; text-align: center"
-          id="result-emoji"
-        >
-          🏆
-        </div>
-        <div class="result-band" style="text-align: center" id="result-band">
-          —
-        </div>
-        <div class="result-sub" style="text-align: center" id="result-sub">
-          Band Score
-        </div>
+        <div style="font-size:48px;margin-bottom:8px;text-align:center" id="result-emoji">🏆</div>
+        <div class="result-band" style="text-align:center" id="result-band">—</div>
+        <div class="result-sub" style="text-align:center" id="result-sub">Band Score</div>
         <div class="result-stats" id="result-stats"></div>
         <div class="review-title" id="review-title"></div>
         <div class="review-grid" id="review-grid"></div>
@@ -422,88 +165,131 @@
 
     <script>
       let user, test;
-      let totalSeconds = 0,
-        elapsed = 0,
-        timerInterval = null;
+      let totalSeconds = 0, elapsed = 0, timerInterval = null;
       let questionCount = 0;
 
-      document.addEventListener("DOMContentLoaded", async () => {
+      document.addEventListener('DOMContentLoaded', async () => {
         const params = new URLSearchParams(window.location.search);
-        const id = params.get("id");
-        if (!id) {
-          showError("No test ID provided.");
-          return;
-        }
+        const id = params.get('id');
+        if (!id) { showError('No test ID provided.'); return; }
 
-        // ✅ FIX 1: Run auth + fetch at the same time (saves 300-800ms)
+        // FIX: auth + test fetch run in parallel for maximum speed
         const [usr, testData] = await Promise.all([
-          Auth.initUser("student"),
+          Auth.initUser('student'),
           DB.getTest(id),
         ]);
 
-        if (!usr) return;
-        renderHeader("tests.html");
+        if (!usr) return; // initUser already redirected
+        renderHeader('tests.html');
 
         test = testData;
-        if (!test) {
-          showError("Test not found.");
-          return;
-        }
+        if (!test) { showError('Test not found.'); return; }
 
         setupTest();
       });
 
       function showError(msg) {
-        document.getElementById("iframe-cover").innerHTML =
+        document.getElementById('iframe-cover').innerHTML =
           `<div style="font-size:28px">⚠️</div><div>${msg}</div>
            <a href="tests.html" class="btn btn-outline" style="margin-top:8px">← Back to Tests</a>`;
       }
 
       function setupTest() {
-        document.title = test.title + " — IELTS Master";
-        document.getElementById("test-title-bar").textContent = test.title;
-        const isRead = test.type === "reading";
-        const badge = document.getElementById("type-badge");
-        badge.textContent = isRead ? "📖 Reading" : "🎧 Listening";
-        badge.className = `badge ${isRead ? "badge-red" : "badge-blue"}`;
+        document.title = test.title + ' — IELTS Master';
+        document.getElementById('test-title-bar').textContent = test.title;
+        const isRead = test.type === 'reading';
+        const badge = document.getElementById('type-badge');
+        badge.textContent = isRead ? '📖 Reading' : '🎧 Listening';
+        badge.className = `badge ${isRead ? 'badge-red' : 'badge-blue'}`;
 
         questionCount = parseInt(test.question_count) || 13;
         if (questionCount === 0) {
-          showError(
-            "This test has no questions configured. Please contact your teacher.",
-          );
+          showError('This test has no questions configured. Please contact your teacher.');
           return;
         }
         buildAnswerInputs(questionCount);
         loadContent();
-
         totalSeconds = (isRead ? 60 : 40) * 60;
         startTimer();
       }
 
       function loadContent() {
-        const iframe = document.getElementById("test-iframe");
-        const cover = document.getElementById("iframe-cover");
-        iframe.onload = () => {
-          cover.style.display = "none";
-        };
+        const iframeWrap = document.getElementById('iframe-wrap');
+        const iframe = document.getElementById('test-iframe');
+        const cover  = document.getElementById('iframe-cover');
 
-        if (test.mode === "url" && test.url) {
+        if (test.mode === 'article') {
+          // Replace the iframe-wrap with a styled article panel
+          iframeWrap.innerHTML = buildArticleHTML(test);
+          return;
+        }
+
+        if (test.mode === 'url' && test.url) {
+          // Block local file:// URLs
+          if (test.url.startsWith('file://') || test.url.startsWith('file:\\')) {
+            cover.innerHTML = `
+              <div style="font-size:28px">⚠️</div>
+              <div style="text-align:center;max-width:380px;line-height:1.6">
+                <strong>Local file not accessible</strong><br>
+                This test links to a file on the teacher's computer.<br><br>
+                The teacher needs to upload it to a web host and update the test URL.
+              </div>`;
+            return;
+          }
+          iframe.onload = () => { cover.style.display = 'none'; };
           iframe.src = test.url;
-        } else if (test.mode === "html" && test.html) {
-          const blob = new Blob([test.html], { type: "text/html" });
+        } else if (test.mode === 'html' && test.html) {
+          const blob = new Blob([test.html], { type: 'text/html' });
+          iframe.onload = () => { cover.style.display = 'none'; };
           iframe.src = URL.createObjectURL(blob);
         } else {
-          showError("This test has no content. Please contact your teacher.");
+          showError('This test has no content. Please contact your teacher.');
         }
       }
 
+      function buildArticleHTML(t) {
+        const heading = t.article_title
+          ? `<div class="article-heading">${escapeHTML(t.article_title)}</div>`
+          : '';
+
+        const audioBar = t.article_audio
+          ? `<div class="article-audio-bar">
+               <span class="article-audio-label">🎧 Listen:</span>
+               <audio controls src="${escapeHTML(t.article_audio)}">
+                 Your browser does not support audio.
+               </audio>
+             </div>`
+          : '';
+
+        const rawText = t.article_text || '';
+        const paragraphs = rawText
+          .split(/\n\n+/)
+          .map(p => p.trim())
+          .filter(p => p.length > 0)
+          .map(p => `<p>${escapeHTML(p).replace(/\n/g, '<br>')}</p>`)
+          .join('');
+
+        return `<div class="article-wrap">
+          ${audioBar}
+          ${heading}
+          <div class="article-body">${paragraphs}</div>
+        </div>`;
+      }
+
+      function escapeHTML(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
       function buildAnswerInputs(n) {
-        const scroll = document.getElementById("answers-scroll");
-        scroll.innerHTML = "";
+        const scroll = document.getElementById('answers-scroll');
+        scroll.innerHTML = '';
         for (let i = 0; i < n; i++) {
-          const row = document.createElement("div");
-          row.className = "q-row";
+          const row = document.createElement('div');
+          row.className = 'q-row';
           row.innerHTML = `
             <div class="q-num">Q${i + 1}</div>
             <input type="text" class="q-input" id="ans_${i}"
@@ -516,18 +302,18 @@
       }
 
       function onAnswerInput(i, el) {
-        el.classList.toggle("filled", el.value.trim().length > 0);
+        el.classList.toggle('filled', el.value.trim().length > 0);
         updateFilledCount();
       }
 
       function updateFilledCount() {
         let filled = 0;
         for (let i = 0; i < questionCount; i++) {
-          const el = document.getElementById("ans_" + i);
+          const el = document.getElementById('ans_' + i);
           if (el && el.value.trim()) filled++;
         }
-        document.getElementById("filled-count").textContent =
-          filled + " of " + questionCount + " answered";
+        document.getElementById('filled-count').textContent =
+          filled + ' of ' + questionCount + ' answered';
       }
 
       function startTimer() {
@@ -537,7 +323,7 @@
           updateTimerDisplay();
           if (elapsed >= totalSeconds) {
             clearInterval(timerInterval);
-            alert("⏰ Time is up! Submitting your answers now.");
+            alert('⏰ Time is up! Submitting your answers now.');
             submitTest();
           }
         }, 1000);
@@ -547,29 +333,21 @@
         const remaining = Math.max(0, totalSeconds - elapsed);
         const m = Math.floor(remaining / 60);
         const s = remaining % 60;
-        document.getElementById("timer-text").textContent =
-          String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
-        document
-          .getElementById("timer-pill")
-          .classList.toggle("urgent", remaining < 120);
-        document.getElementById("progress-fill").style.width =
-          Math.round((elapsed / totalSeconds) * 100) + "%";
+        document.getElementById('timer-text').textContent =
+          String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        document.getElementById('timer-pill').classList.toggle('urgent', remaining < 120);
+        document.getElementById('progress-fill').style.width =
+          Math.round((elapsed / totalSeconds) * 100) + '%';
       }
 
       function confirmSubmit() {
         let filled = 0;
         for (let i = 0; i < questionCount; i++) {
-          const el = document.getElementById("ans_" + i);
+          const el = document.getElementById('ans_' + i);
           if (el && el.value.trim()) filled++;
         }
         const unanswered = questionCount - filled;
-        if (
-          unanswered > 0 &&
-          !confirm(
-            `You have ${unanswered} unanswered question(s). Submit anyway?`,
-          )
-        )
-          return;
+        if (unanswered > 0 && !confirm(`You have ${unanswered} unanswered question(s). Submit anyway?`)) return;
         submitTest();
       }
 
@@ -578,41 +356,32 @@
 
         const answers = [];
         for (let i = 0; i < questionCount; i++) {
-          const el = document.getElementById("ans_" + i);
-          answers.push(el ? el.value.trim() : "");
+          const el = document.getElementById('ans_' + i);
+          answers.push(el ? el.value.trim() : '');
         }
 
         const rawKey = test.answer_key || [];
-        const answerKey = rawKey.map((entry) =>
-          Array.isArray(entry) ? entry : entry ? [entry] : [""],
+        const answerKey = rawKey.map(entry =>
+          Array.isArray(entry) ? entry : (entry ? [entry] : [''])
         );
 
-        const hasKey = answerKey.some((alts) =>
-          alts.some((a) => a && a.trim()),
-        );
+        const hasKey = answerKey.some(alts => alts.some(a => a && a.trim()));
 
         let score = 0;
         const gradedAnswers = answers.map((ans, i) => {
-          const alts = (answerKey[i] || [""])
-            .map((a) => a.trim())
-            .filter((a) => a);
+          const alts = (answerKey[i] || ['']).map(a => a.trim()).filter(a => a);
           if (!alts.length) return { ans, alts: [], correct: null };
-          const correct = alts.some(
-            (a) => ans.toLowerCase() === a.toLowerCase(),
-          );
+          const correct = alts.some(a => ans.toLowerCase() === a.toLowerCase());
           if (correct) score++;
           return { ans, alts, correct };
         });
 
-        if (!hasKey) score = answers.filter((a) => a.length > 0).length;
+        if (!hasKey) score = answers.filter(a => a.length > 0).length;
 
         const total = questionCount;
         const usedMin = Math.floor(elapsed / 60);
         const usedSec = elapsed % 60;
-        const timeUsed =
-          String(usedMin).padStart(2, "0") +
-          ":" +
-          String(usedSec).padStart(2, "0");
+        const timeUsed = String(usedMin).padStart(2, '0') + ':' + String(usedSec).padStart(2, '0');
 
         const resultObj = {
           test: test.title,
@@ -624,80 +393,50 @@
         };
 
         const saved = await DB.saveResult(user.id, resultObj);
-        showResultOverlay(
-          score,
-          total,
-          timeUsed,
-          gradedAnswers,
-          hasKey,
-          saved.ok,
-        );
+        showResultOverlay(score, total, timeUsed, gradedAnswers, hasKey, saved.ok);
       }
 
-      function showResultOverlay(
-        score,
-        total,
-        timeUsed,
-        gradedAnswers,
-        hasKey,
-        savedOk,
-      ) {
+      function showResultOverlay(score, total, timeUsed, gradedAnswers, hasKey, savedOk) {
         const pct = total ? Math.round((score / total) * 100) : 0;
         const band = bandScore(score, total);
         const color = bandColor(pct);
-        const emoji =
-          band >= 7.5 ? "🏆" : band >= 6 ? "🎯" : band >= 5 ? "📈" : "💪";
+        const emoji = band >= 7.5 ? '🏆' : band >= 6 ? '🎯' : band >= 5 ? '📈' : '💪';
 
-        document.getElementById("result-emoji").textContent = emoji;
-        document.getElementById("result-band").textContent = "Band " + band;
-        document.getElementById("result-band").style.color = color;
-        document.getElementById("result-sub").textContent =
-          (test.type === "reading" ? "📖 Reading" : "🎧 Listening") +
-          " · " +
-          (savedOk ? "✅ Saved to results" : "⚠️ Save failed");
+        document.getElementById('result-emoji').textContent = emoji;
+        document.getElementById('result-band').textContent = 'Band ' + band;
+        document.getElementById('result-band').style.color = color;
+        document.getElementById('result-sub').textContent =
+          (test.type === 'reading' ? '📖 Reading' : '🎧 Listening') +
+          ' · ' + (savedOk ? '✅ Saved to results' : '⚠️ Save failed');
 
-        document.getElementById("result-stats").innerHTML = `
-          <div class="rs-item">
-            <div class="rs-num">${score}/${total}</div>
-            <div class="rs-label">Score</div>
-          </div>
-          <div class="rs-item">
-            <div class="rs-num" style="color:${color}">${pct}%</div>
-            <div class="rs-label">Correct</div>
-          </div>
-          <div class="rs-item">
-            <div class="rs-num">${timeUsed}</div>
-            <div class="rs-label">Time used</div>
-          </div>`;
+        document.getElementById('result-stats').innerHTML = `
+          <div class="rs-item"><div class="rs-num">${score}/${total}</div><div class="rs-label">Score</div></div>
+          <div class="rs-item"><div class="rs-num" style="color:${color}">${pct}%</div><div class="rs-label">Correct</div></div>
+          <div class="rs-item"><div class="rs-num">${timeUsed}</div><div class="rs-label">Time used</div></div>`;
 
-        document.getElementById("review-title").textContent = hasKey
-          ? "📋 Answer Review"
-          : "📋 Your Answers (no key provided)";
+        document.getElementById('review-title').textContent =
+          hasKey ? '📋 Answer Review' : '📋 Your Answers (no key provided)';
 
-        document.getElementById("review-grid").innerHTML = gradedAnswers
-          .map((g, i) => {
-            if (g.correct === null) {
-              return `<div class="review-row no-key">
+        document.getElementById('review-grid').innerHTML = gradedAnswers.map((g, i) => {
+          if (g.correct === null) {
+            return `<div class="review-row no-key">
               <div class="review-q">Q${i + 1}</div>
-              <div class="review-body">
-                <div class="review-yours">${g.ans || '<em style="color:var(--muted)">blank</em>'}</div>
-              </div>
+              <div class="review-body"><div>${g.ans || '<em style="color:var(--muted)">blank</em>'}</div></div>
               <div class="review-icon">—</div>
             </div>`;
-            }
-            const acceptedStr = (g.alts || []).join(" / ");
-            return `<div class="review-row ${g.correct ? "correct" : "wrong"}">
+          }
+          const acceptedStr = (g.alts || []).join(' / ');
+          return `<div class="review-row ${g.correct ? 'correct' : 'wrong'}">
             <div class="review-q">Q${i + 1}</div>
             <div class="review-body">
-              <div class="review-yours">${g.ans || '<em style="color:var(--muted)">blank</em>'}</div>
-              ${!g.correct && acceptedStr ? `<div class="review-correct">✓ ${acceptedStr}</div>` : ""}
+              <div>${g.ans || '<em style="color:var(--muted)">blank</em>'}</div>
+              ${!g.correct && acceptedStr ? `<div class="review-correct">✓ ${acceptedStr}</div>` : ''}
             </div>
-            <div class="review-icon">${g.correct ? "✅" : "❌"}</div>
+            <div class="review-icon">${g.correct ? '✅' : '❌'}</div>
           </div>`;
-          })
-          .join("");
+        }).join('');
 
-        document.getElementById("result-overlay").classList.add("open");
+        document.getElementById('result-overlay').classList.add('open');
       }
     </script>
   </body>

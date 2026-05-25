@@ -190,7 +190,7 @@
           <h2>Test Content</h2>
           <p style="font-size:14px;color:var(--muted);margin-bottom:20px">Choose how you want to provide the test — paste a URL (recommended) or paste raw HTML.</p>
 
-          <div class="mode-selector">
+          <div class="mode-selector" style="grid-template-columns:1fr 1fr 1fr">
             <div class="mode-card selected" id="mode-url" onclick="selectMode('url')">
               <div class="mc-icon">🔗</div>
               <div class="mc-label">Paste URL</div>
@@ -200,6 +200,11 @@
               <div class="mc-icon">📄</div>
               <div class="mc-label">Paste HTML</div>
               <div class="mc-sub">Paste raw HTML code directly</div>
+            </div>
+            <div class="mode-card" id="mode-article" onclick="selectMode('article')">
+              <div class="mc-icon">📰</div>
+              <div class="mc-label">Article / Passage</div>
+              <div class="mc-sub">Type or paste plain-text reading/listening passage</div>
             </div>
           </div>
 
@@ -223,6 +228,26 @@
             </div>
             <p style="font-size:12px;color:var(--muted);margin-top:8px">
               💡 Paste the full HTML of your test page. Students will see this rendered in their browser.
+            </p>
+          </div>
+
+          <!-- ARTICLE MODE -->
+          <div id="article-section" style="display:none">
+            <div class="form-group">
+              <label>Article Title <span style="font-weight:400;text-transform:none;font-size:11px;color:var(--muted)">(shown above the passage)</span></label>
+              <input type="text" id="article-title" class="form-control" placeholder="e.g. The History of Tea">
+            </div>
+            <div class="form-group">
+              <label>Audio URL <span style="font-weight:400;text-transform:none;font-size:11px;color:var(--muted)">(optional — for listening tests)</span></label>
+              <input type="url" id="article-audio" class="form-control" placeholder="https://example.com/audio.mp3">
+            </div>
+            <div class="form-group">
+              <label>Passage / Article Text</label>
+              <textarea id="article-text" class="form-control" rows="14"
+                placeholder="Paste or type the reading passage or listening transcript here. Use blank lines to separate paragraphs."></textarea>
+            </div>
+            <p style="font-size:12px;color:var(--muted);margin-top:8px">
+              💡 The passage will be shown on the left side while students answer questions on the right. Perfect for IELTS-style reading and listening tests.
             </p>
           </div>
         </div>
@@ -412,8 +437,10 @@
         currentMode = mode;
         document.getElementById('mode-url').classList.toggle('selected', mode === 'url');
         document.getElementById('mode-html').classList.toggle('selected', mode === 'html');
-        document.getElementById('url-section').style.display  = mode === 'url'  ? 'block' : 'none';
-        document.getElementById('html-section').style.display = mode === 'html' ? 'block' : 'none';
+        document.getElementById('mode-article').classList.toggle('selected', mode === 'article');
+        document.getElementById('url-section').style.display     = mode === 'url'     ? 'block' : 'none';
+        document.getElementById('html-section').style.display    = mode === 'html'    ? 'block' : 'none';
+        document.getElementById('article-section').style.display = mode === 'article' ? 'block' : 'none';
       }
 
       function previewUrl() {
@@ -453,19 +480,38 @@
         const qcount = parseInt(document.getElementById('test-qcount').value) || 13;
         const url    = document.getElementById('test-url').value.trim();
         const html   = document.getElementById('test-html').value.trim();
+        const articleTitle = document.getElementById('article-title').value.trim();
+        const articleAudio = document.getElementById('article-audio').value.trim();
+        const articleText  = document.getElementById('article-text').value.trim();
         const answerKey = collectAnswerKey(); // array of arrays
 
         if (!title) { showAlert('Please enter a test title.'); return; }
         if (currentMode === 'url'  && !url)  { showAlert('Please paste a URL for the test.'); return; }
         if (currentMode === 'html' && !html) { showAlert('Please paste the HTML for the test.'); return; }
+        if (currentMode === 'article' && !articleText) { showAlert('Please enter the article / passage text.'); return; }
+
+        // Block local file:// URLs
+        if (currentMode === 'url' && url) {
+          if (url.startsWith('file://') || url.startsWith('file:\\')) {
+            showAlert('Local file paths (file://…) cannot be used. Upload the file to a web host and paste the public https:// link.');
+            return;
+          }
+          if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            showAlert('Please enter a valid URL starting with https://');
+            return;
+          }
+        }
 
         const testObj = {
           title,
           type,
           question_count: qcount,
-          mode:       currentMode,
-          url:        currentMode === 'url'  ? url  : null,
-          html:       currentMode === 'html' ? html : null,
+          mode:          currentMode,
+          url:           currentMode === 'url'     ? url          : null,
+          html:          currentMode === 'html'    ? html         : null,
+          article_title: currentMode === 'article' ? articleTitle : null,
+          article_audio: currentMode === 'article' ? articleAudio : null,
+          article_text:  currentMode === 'article' ? articleText  : null,
           answer_key: answerKey,   // stored as array of arrays in Supabase (jsonb)
           created_at: new Date().toISOString(),
         };
@@ -474,9 +520,12 @@
         if (!result.ok) { showAlert(result.error); return; }
 
         // Reset form
-        document.getElementById('test-title').value = '';
-        document.getElementById('test-url').value   = '';
-        document.getElementById('test-html').value  = '';
+        document.getElementById('test-title').value   = '';
+        document.getElementById('test-url').value     = '';
+        document.getElementById('test-html').value    = '';
+        document.getElementById('article-title').value = '';
+        document.getElementById('article-audio').value = '';
+        document.getElementById('article-text').value  = '';
         document.getElementById('url-preview').style.display = 'none';
         answerData = [];
         rebuildAnswerKey();
@@ -517,7 +566,7 @@
                 <div class="ct-meta">
                   <span class="badge ${t.type === 'reading' ? 'badge-red' : 'badge-blue'}">${t.type === 'reading' ? '📖 Reading' : '🎧 Listening'}</span>
                   &nbsp;${total} questions ·
-                  ${t.mode === 'url' ? '🔗 URL' : '📄 HTML'} ·
+                  ${t.mode === 'url' ? '🔗 URL' : t.mode === 'html' ? '📄 HTML' : '📰 Article'} ·
                   🗝️ ${keyCount}/${total} keyed ·
                   Added ${added}
                 </div>
