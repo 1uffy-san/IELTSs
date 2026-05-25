@@ -9,7 +9,7 @@ const DB = {
       if (error) { console.error("getUserResults error:", error); return []; }
       return (data || []).map(r => ({
         ...r,
-        test: r.test_name || r.test || "—",   // normalise: DB col is test_name
+        test: r.test_name || r.test || "—",
         date: r.date || (r.created_at ? new Date(r.created_at).toLocaleDateString() : "—"),
       }));
     } catch (e) {
@@ -20,19 +20,17 @@ const DB = {
 
   async saveResult(userId, resultObj) {
     try {
-      // Accept both camelCase (correctAnswers) and snake_case (correct_answers)
       const correctAnswers =
         resultObj.correctAnswers || resultObj.correct_answers || [];
 
       const { error } = await _supabase.from("results").insert({
         user_id:         userId,
-        test_name:       resultObj.test,   // column in DB is test_name
+        test_name:       resultObj.test,
         type:            resultObj.type,
         score:           resultObj.score,
         total:           resultObj.total,
         answers:         resultObj.answers || [],
         correct_answers: correctAnswers,
-        // NOTE: no 'date' column — Supabase sets created_at automatically
       });
       if (error) { console.error("saveResult error:", error); return { ok: false, error: error.message }; }
       return { ok: true };
@@ -63,12 +61,11 @@ const DB = {
         .select("*")
         .order("id", { ascending: true });
       if (error) { console.error("getAllResults error:", error); return {}; }
-      // Group by user_id, normalising date from created_at
       const grouped = {};
       for (const row of data || []) {
         const r = {
           ...row,
-          test: row.test_name || row.test || "—",   // normalise DB col
+          test: row.test_name || row.test || "—",
           date: row.date || (row.created_at ? new Date(row.created_at).toLocaleDateString() : "—"),
         };
         if (!grouped[r.user_id]) grouped[r.user_id] = [];
@@ -81,6 +78,23 @@ const DB = {
     }
   },
 
+  // ✅ NEW: Lightweight fetch — excludes heavy 'html' and 'answer_key' columns.
+  // Use this for listing tests (tests.html, dashboard, etc.)
+  async getTestsMeta() {
+    try {
+      const { data, error } = await _supabase
+        .from("tests")
+        .select("id, title, type, mode, url, question_count, created_at")
+        .order("created_at", { ascending: true });
+      if (error) { console.error("getTestsMeta error:", error); return []; }
+      return data || [];
+    } catch (e) {
+      console.error("getTestsMeta error:", e);
+      return [];
+    }
+  },
+
+  // Full fetch including html/answer_key — only use when actually taking a test
   async getTests() {
     try {
       const { data, error } = await _supabase
@@ -95,20 +109,28 @@ const DB = {
     }
   },
 
-  async getTest(testId) {
-    try {
-      const { data, error } = await _supabase
-        .from("tests")
-        .select("*")
-        .eq("id", testId)
-        .single();
-      if (error) { console.error("getTest error:", error); return null; }
-      return data || null;
-    } catch (e) {
-      console.error("getTest error:", e);
-      return null;
-    }
-  },
+  // ✅ Fetches a single test by ID — used in take-test.html
+ async getTest(testId) {
+  try {
+    // ✅ FIX 2: Return cached version if already fetched this session
+    const cached = sessionStorage.getItem('test_' + testId);
+    if (cached) return JSON.parse(cached);
+
+    const { data, error } = await _supabase
+      .from("tests")
+      .select("*")
+      .eq("id", testId)
+      .single();
+    if (error) { console.error("getTest error:", error); return null; }
+
+    // Cache it for this session
+    if (data) sessionStorage.setItem('test_' + testId, JSON.stringify(data));
+    return data || null;
+  } catch (e) {
+    console.error("getTest error:", e);
+    return null;
+  }
+},,
 
   async saveTest(testObj) {
     try {

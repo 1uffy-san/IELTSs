@@ -10,25 +10,117 @@
     <script src="../js/auth.js" defer></script>
     <script src="../js/data.js" defer></script>
     <style>
-      .tabs { display:flex; gap:0; background:#fff; border:1.5px solid var(--border); border-radius:10px; padding:4px; margin-bottom:28px; width:fit-content; }
-      .tab-btn { padding:9px 24px; border-radius:7px; border:none; background:none; font-size:14px; font-weight:600; font-family:inherit; color:var(--muted); cursor:pointer; transition:.2s; }
-      .tab-btn.active { background:var(--red); color:#fff; }
-      .test-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:16px; }
-      .test-card { background:#fff; border:1.5px solid var(--border); border-radius:12px; overflow:hidden; transition:.2s; }
-      .test-card:hover { box-shadow:0 6px 20px rgba(0,0,0,.1); transform:translateY(-2px); }
-      .tc-header { padding:18px 20px 14px; display:flex; align-items:flex-start; gap:14px; }
-      .tc-icon { width:46px; height:46px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
-      .tc-icon.reading   { background:#fef0f0; }
-      .tc-icon.listening { background:#eff6ff; }
-      .tc-icon.custom-reading   { background:#fef0f0; border:2px dashed #fca5a5; }
-      .tc-icon.custom-listening { background:#eff6ff; border:2px dashed #93c5fd; }
-      .tc-title { font-size:15px; font-weight:700; line-height:1.3; margin-bottom:4px; }
-      .tc-meta { font-size:12px; color:var(--muted); }
-      .tc-divider { height:1px; background:var(--border); margin:0 20px; }
-      .tc-footer { padding:14px 20px; display:flex; align-items:center; justify-content:space-between; }
-      .tc-attempted { font-size:12px; color:var(--green); font-weight:600; }
-      .tc-score { font-size:12px; color:var(--muted); }
-      .section-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin-bottom:12px; margin-top:8px; }
+      .tabs {
+        display: flex;
+        gap: 0;
+        background: #fff;
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        padding: 4px;
+        margin-bottom: 28px;
+        width: fit-content;
+      }
+      .tab-btn {
+        padding: 9px 24px;
+        border-radius: 7px;
+        border: none;
+        background: none;
+        font-size: 14px;
+        font-weight: 600;
+        font-family: inherit;
+        color: var(--muted);
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .tab-btn.active {
+        background: var(--red);
+        color: #fff;
+      }
+      .test-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 16px;
+      }
+      .test-card {
+        background: #fff;
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: 0.2s;
+      }
+      .test-card:hover {
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+      }
+      .tc-header {
+        padding: 18px 20px 14px;
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+      }
+      .tc-icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        flex-shrink: 0;
+      }
+      .tc-icon.reading {
+        background: #fef0f0;
+      }
+      .tc-icon.listening {
+        background: #eff6ff;
+      }
+      .tc-icon.custom-reading {
+        background: #fef0f0;
+        border: 2px dashed #fca5a5;
+      }
+      .tc-icon.custom-listening {
+        background: #eff6ff;
+        border: 2px dashed #93c5fd;
+      }
+      .tc-title {
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1.3;
+        margin-bottom: 4px;
+      }
+      .tc-meta {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .tc-divider {
+        height: 1px;
+        background: var(--border);
+        margin: 0 20px;
+      }
+      .tc-footer {
+        padding: 14px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .tc-attempted {
+        font-size: 12px;
+        color: var(--green);
+        font-weight: 600;
+      }
+      .tc-score {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .section-label {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--muted);
+        margin-bottom: 12px;
+        margin-top: 8px;
+      }
     </style>
   </head>
   <body>
@@ -38,69 +130,88 @@
       <div class="page-sub">Select a test to begin</div>
 
       <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('reading', this)">📖 Reading</button>
-        <button class="tab-btn" onclick="switchTab('listening', this)">🎧 Listening</button>
+        <button class="tab-btn active" onclick="switchTab('reading', this)">
+          📖 Reading
+        </button>
+        <button class="tab-btn" onclick="switchTab('listening', this)">
+          🎧 Listening
+        </button>
       </div>
 
       <div id="tab-reading">
-        <div id="reading-teacher-section" style="display:none">
+        <div id="reading-teacher-section" style="display: none">
           <div class="section-label">Teacher Tests</div>
           <div class="test-grid" id="reading-teacher-grid"></div>
-          <div class="section-label" style="margin-top:28px">Cambridge Academic Reading Tests</div>
+          <div class="section-label" style="margin-top: 28px">
+            Cambridge Academic Reading Tests
+          </div>
         </div>
-        <div id="reading-builtin-label" class="section-label">Cambridge Academic Reading Tests</div>
+        <div id="reading-builtin-label" class="section-label">
+          Cambridge Academic Reading Tests
+        </div>
         <div class="test-grid" id="reading-grid">
-          <div style="color:var(--muted);padding:20px">Loading…</div>
+          <div style="color: var(--muted); padding: 20px">Loading…</div>
         </div>
       </div>
 
-      <div id="tab-listening" style="display:none">
-        <div id="listening-teacher-section" style="display:none">
+      <div id="tab-listening" style="display: none">
+        <div id="listening-teacher-section" style="display: none">
           <div class="section-label">Teacher Tests</div>
           <div class="test-grid" id="listening-teacher-grid"></div>
-          <div class="section-label" style="margin-top:28px">Cambridge Academic Listening Tests</div>
+          <div class="section-label" style="margin-top: 28px">
+            Cambridge Academic Listening Tests
+          </div>
         </div>
-        <div id="listening-builtin-label" class="section-label">Cambridge Academic Listening Tests</div>
+        <div id="listening-builtin-label" class="section-label">
+          Cambridge Academic Listening Tests
+        </div>
         <div class="test-grid" id="listening-grid">
-          <div style="color:var(--muted);padding:20px">Loading…</div>
+          <div style="color: var(--muted); padding: 20px">Loading…</div>
         </div>
       </div>
     </main>
 
     <script>
-      let user, myResults = [], allTests = [];
+      let user,
+        myResults = [],
+        allTests = [];
 
-      document.addEventListener('DOMContentLoaded', async () => {
-        user = await Auth.initUser('student');
+      document.addEventListener("DOMContentLoaded", async () => {
+        user = await Auth.initUser("student");
         if (!user) return;
-        renderHeader('tests.html');
+        renderHeader("tests.html");
 
-        myResults = await DB.getUserResults(user.id);
-        allTests  = await DB.getTests();
+    
+      [myResults, allTests] = await Promise.all([
+  DB.getUserResults(user.id),
+  DB.getTestsMeta(),
+]);
 
-        renderTab('reading');
-        renderTab('listening');
+allTests.forEach(t => DB.getTest(t.id));
+
+        renderTab("reading");
+        renderTab("listening");
       });
 
       function renderTab(type) {
-        const tests = allTests.filter(t => t.type === type);
+        const tests = allTests.filter((t) => t.type === type);
 
-        const teacherSection  = document.getElementById(type + '-teacher-section');
-        const teacherGrid     = document.getElementById(type + '-teacher-grid');
-        const builtinLabel    = document.getElementById(type + '-builtin-label');
-        const builtinGrid     = document.getElementById(type + '-grid');
+        const teacherSection = document.getElementById(
+          type + "-teacher-section",
+        );
+        const teacherGrid = document.getElementById(type + "-teacher-grid");
+        const builtinLabel = document.getElementById(type + "-builtin-label");
+        const builtinGrid = document.getElementById(type + "-grid");
 
         if (tests.length) {
-          // Show teacher section, hide the standalone builtin label
-          teacherSection.style.display = 'block';
-          builtinLabel.style.display   = 'none';
-          teacherGrid.innerHTML = tests.map(t => buildTestCard(t)).join('');
+          teacherSection.style.display = "block";
+          builtinLabel.style.display = "none";
+          teacherGrid.innerHTML = tests.map((t) => buildTestCard(t)).join("");
         } else {
-          teacherSection.style.display = 'none';
-          builtinLabel.style.display   = 'block';
+          teacherSection.style.display = "none";
+          builtinLabel.style.display = "block";
         }
 
-        // Built-in placeholder (always shown below teacher tests)
         builtinGrid.innerHTML = `
           <div style="color:var(--muted);padding:20px;font-size:14px">
             No built-in ${type} tests yet. Ask your teacher to add tests.
@@ -108,47 +219,60 @@
       }
 
       function buildTestCard(t) {
-        const isRead   = t.type === 'reading';
-        const attempts = myResults.filter(r => (r.test || r.test_name) === t.title);
-        const best     = attempts.length ? Math.max(...attempts.map(r => bandScore(r.score, r.total))) : null;
-        const last     = attempts[attempts.length - 1];
+        const isRead = t.type === "reading";
+        const attempts = myResults.filter(
+          (r) => (r.test || r.test_name) === t.title,
+        );
+        const best = attempts.length
+          ? Math.max(...attempts.map((r) => bandScore(r.score, r.total)))
+          : null;
+        const last = attempts[attempts.length - 1];
 
         return `<div class="test-card">
           <div class="tc-header">
-            <div class="tc-icon custom-${t.type}">${isRead ? '📖' : '🎧'}</div>
+            <div class="tc-icon custom-${t.type}">${isRead ? "📖" : "🎧"}</div>
             <div>
               <div class="tc-title">${t.title}</div>
               <div class="tc-meta">
-                ${isRead ? '📖 Reading' : '🎧 Listening'} ·
-                ${t.question_count || '?'} Questions ·
-                ${t.mode === 'url' ? '🔗 External link' : '📄 Inline HTML'}
+                ${isRead ? "📖 Reading" : "🎧 Listening"} ·
+                ${t.question_count || "?"} Questions ·
+                ${t.mode === "url" ? "🔗 External link" : "📄 Inline HTML"}
               </div>
             </div>
           </div>
           <div class="tc-divider"></div>
           <div class="tc-footer">
             <div>
-              ${attempts.length
-                ? `<div class="tc-attempted">✓ Attempted ${attempts.length}×</div>
+              ${
+                attempts.length
+                  ? `<div class="tc-attempted">✓ Attempted ${attempts.length}×</div>
                    <div class="tc-score">Best: Band ${best} · Last: ${last.score}/${last.total}</div>`
-                : `<span class="badge badge-gray">Not attempted</span>`}
+                  : `<span class="badge badge-gray">Not attempted</span>`
+              }
             </div>
-            <button class="btn btn-primary btn-sm" onclick="openTest('${t.id}')">
-              ${attempts.length ? 'Retake' : 'Start'}
-            </button>
+         <button class="btn btn-primary btn-sm"
+  onmouseenter="DB.getTest('${t.id}')"
+  onclick="openTest('${t.id}')">
+  ${attempts.length ? "Retake" : "Start"}
+</button>
           </div>
         </div>`;
       }
 
       function openTest(testId) {
-        window.location.href = 'take-test.html?id=' + encodeURIComponent(testId);
+        window.location.href =
+          "take-test.html?id=" + encodeURIComponent(testId);
       }
 
       function switchTab(tab, btn) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('tab-reading').style.display   = tab === 'reading'   ? 'block' : 'none';
-        document.getElementById('tab-listening').style.display = tab === 'listening' ? 'block' : 'none';
+        document
+          .querySelectorAll(".tab-btn")
+          .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("tab-reading").style.display =
+          tab === "reading" ? "block" : "none";
+        document.getElementById("tab-listening").style.display =
+          tab === "listening" ? "block" : "none";
       }
     </script>
   </body>
