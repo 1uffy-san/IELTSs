@@ -1,3 +1,22 @@
+// ── Compression helpers (CompressionStream — all modern browsers) ──
+const _compress = async (str) => {
+  try {
+    const stream = new Blob([str]).stream().pipeThrough(new CompressionStream('gzip'));
+    const buf = await new Response(stream).arrayBuffer();
+    return '__gz__' + btoa(String.fromCharCode(...new Uint8Array(buf)));
+  } catch (_) { return str; }
+};
+
+const _decompress = async (val) => {
+  if (!val || !val.startsWith('__gz__')) return val;
+  try {
+    const b64 = val.slice(6);
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return await new Response(stream).text();
+  } catch (_) { return val; }
+};
+
 const DB = {
   async getUserResults(userId) {
     try {
@@ -21,7 +40,7 @@ const DB = {
   async saveResult(userId, resultObj) {
     try {
       const correctAnswers = resultObj.correctAnswers || resultObj.correct_answers || [];
-      const { error } = await _supabase.from("results").insert({
+      const row = {
         user_id:         userId,
         test_name:       resultObj.test,
         type:            resultObj.type,
@@ -29,7 +48,11 @@ const DB = {
         total:           resultObj.total,
         answers:         resultObj.answers || [],
         correct_answers: correctAnswers,
-      });
+      };
+      if (resultObj.explanations && resultObj.explanations.length > 0) {
+        row.explanations = resultObj.explanations;
+      }
+      const { error } = await _supabase.from("results").insert(row);
       if (error) { console.error("saveResult error:", error); return { ok: false, error: error.message }; }
       return { ok: true };
     } catch (e) {
@@ -77,7 +100,6 @@ const DB = {
   },
 
   // Lightweight — excludes heavy 'html' and 'answer_key' columns.
-  // Use for listing tests (tests.html, dashboard, etc.)
   async getTestsMeta() {
     try {
       const { data, error } = await _supabase
@@ -107,26 +129,44 @@ const DB = {
     }
   },
 
-  // Single test fetch with sessionStorage caching — used in take-test.html
+  // Single test fetch with sessionStorage caching + decompression
   async getTest(testId) {
     try {
+      // Check cache first
       try {
         const cached = sessionStorage.getItem('test_' + testId);
         if (cached) {
           const parsed = JSON.parse(cached);
-          if (parsed && parsed.id) return parsed;
+          if (parsed && parsed.id) {
+            // Log size for diagnostics
+            console.info(`[getTest] cache hit — ${testId} (${(cached.length/1024).toFixed(1)} KB cached)`);
+            return parsed;
+          }
         }
       } catch (_) {
         sessionStorage.removeItem('test_' + testId);
       }
+
+      console.info(`[getTest] fetching from DB — ${testId}`);
+      const t0 = performance.now();
 
       const { data, error } = await _supabase
         .from("tests")
         .select("*")
         .eq("id", testId)
         .single();
+
+      const elapsed = (performance.now() - t0).toFixed(0);
       if (error) { console.error("getTest error:", error); return null; }
 
+      // Decompress html field if it was stored compressed
+      if (data && data.html) {
+        const rawSize = (JSON.stringify(data).length / 1024).toFixed(1);
+        console.info(`[getTest] fetched in ${elapsed}ms — raw payload ${rawSize} KB`);
+        data.html = await _decompress(data.html);
+      }
+
+      // Cache the decompressed version
       try {
         if (data) sessionStorage.setItem('test_' + testId, JSON.stringify(data));
       } catch (_) {}
@@ -138,9 +178,20 @@ const DB = {
     }
   },
 
+  // Save test — compresses HTML before storing to reduce DB payload size
   async saveTest(testObj) {
     try {
-      const { error } = await _supabase.from("tests").insert(testObj);
+      const toSave = { ...testObj };
+
+      // Compress HTML if present and not already compressed
+      if (toSave.html && !toSave.html.startsWith('__gz__')) {
+        const originalKB = (toSave.html.length / 1024).toFixed(1);
+        toSave.html = await _compress(toSave.html);
+        const compressedKB = (toSave.html.length / 1024).toFixed(1);
+        console.info(`[saveTest] HTML compressed: ${originalKB} KB → ${compressedKB} KB`);
+      }
+
+      const { error } = await _supabase.from("tests").insert(toSave);
       if (error) {
         console.error("saveTest error:", error.message, error.details, error.hint);
         return { ok: false, error: error.message };
@@ -164,6 +215,14 @@ const DB = {
     }
   },
 };
+
+/** Returns a human-readable label + emoji for a test type */
+function typeLabel(type) {
+  if (type === 'reading')   return { emoji: '📖', label: 'Reading',   badge: 'badge-red'   };
+  if (type === 'listening') return { emoji: '🎧', label: 'Listening', badge: 'badge-blue'  };
+  if (type === 'article')   return { emoji: '📰', label: 'Article',   badge: 'badge-green' };
+  return { emoji: '📋', label: type || 'Test', badge: 'badge-gray' };
+}
 
 function bandScore(score, total) {
   const pct = pctScore(score, total);

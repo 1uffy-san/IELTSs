@@ -180,7 +180,7 @@
         const pct   = pctScore(r.score, r.total);
         const color = bandColor(pct);
         const emoji = band >= 7.5 ? '🏆' : band >= 6 ? '🎯' : band >= 5 ? '📈' : '💪';
-        const typeLabel = r.type === 'reading' ? '📖 Reading' : '🎧 Listening';
+        const typeLabel = r.type === 'reading' ? '📖 Reading' : r.type === 'article' ? '📰 Article' : '🎧 Listening';
 
         /* Build per-answer rows */
         const answers = r.answers || [];

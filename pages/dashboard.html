@@ -67,6 +67,7 @@
         const results = await DB.getUserResults(user.id);
         const readingResults = results.filter((r) => r.type === "reading");
         const listeningResults = results.filter((r) => r.type === "listening");
+        const articleResults = results.filter((r) => r.type === "article");
         const bestBand = results.length
           ? Math.max(...results.map((r) => bandScore(r.score, r.total)))
           : null;
@@ -86,6 +87,11 @@
         <div class="stat-icon icon-blue">🎧</div>
         <div class="stat-num">${listeningResults.length}</div>
         <div class="stat-label">Listening Tests Done</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon icon-green">📰</div>
+        <div class="stat-num">${articleResults.length}</div>
+        <div class="stat-label">Article Tests Done</div>
       </div>
       <div class="stat-card">
         <div class="stat-icon icon-green">🏆</div>
@@ -124,7 +130,7 @@
                 const pct = pctScore(r.score, r.total);
                 return `<tr>
                 <td style="font-weight:600">${r.test || r.test_name || "—"}</td>
-                <td><span class="badge ${r.type === "reading" ? "badge-red" : "badge-blue"}">${r.type === "reading" ? "📖 Reading" : "🎧 Listening"}</span></td>
+                <td><span class="badge ${r.type === "reading" ? "badge-red" : r.type === "article" ? "badge-green" : "badge-blue"}">${r.type === "reading" ? "📖 Reading" : r.type === "article" ? "📰 Article" : "🎧 Listening"}</span></td>
                 <td>${r.score}/${r.total}</td>
                 <td style="font-weight:700;color:${bandColor(pct)}">Band ${band}</td>
                 <td style="color:var(--muted)">${r.date}</td>
@@ -149,6 +155,7 @@
         const flat = students.flatMap((s) => allResults[s.id] || []);
         const readingCt = flat.filter((r) => r.type === "reading").length;
         const listenCt = flat.filter((r) => r.type === "listening").length;
+        const articleCt = flat.filter((r) => r.type === "article").length;
         const avgBand = flat.length
           ? (
               flat.reduce((s, r) => s + bandScore(r.score, r.total), 0) /
@@ -164,6 +171,7 @@
       <div class="stat-card"><div class="stat-icon icon-blue">👥</div><div class="stat-num">${students.length}</div><div class="stat-label">Total Students</div></div>
       <div class="stat-card"><div class="stat-icon icon-red">📖</div><div class="stat-num">${readingCt}</div><div class="stat-label">Reading Tests Taken</div></div>
       <div class="stat-card"><div class="stat-icon icon-blue">🎧</div><div class="stat-num">${listenCt}</div><div class="stat-label">Listening Tests Taken</div></div>
+      <div class="stat-card"><div class="stat-icon icon-green">📰</div><div class="stat-num">${articleCt}</div><div class="stat-label">Article Tests Taken</div></div>
       <div class="stat-card"><div class="stat-icon icon-green">📊</div><div class="stat-num">${avgBand !== "—" ? "Band " + avgBand : "—"}</div><div class="stat-label">Avg Band Score</div></div>
     </div>
 

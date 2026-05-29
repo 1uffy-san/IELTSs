@@ -130,7 +130,7 @@
             <div>Loading test content…</div>
           </div>
           <iframe class="test-iframe" id="test-iframe"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+            sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
             allow="autoplay; fullscreen"></iframe>
         </div>
 
@@ -173,13 +173,51 @@
         const id = params.get('id');
         if (!id) { showError('No test ID provided.'); return; }
 
-        // FIX: auth + test fetch run in parallel for maximum speed
+        // ── INSTANT pre-render from cache ──────────────────────────
+        // Show title + answer inputs immediately so the page feels loaded
+        // while auth + DB fetches happen in the background.
+        // Submit buttons are disabled until auth resolves to prevent user.id crash.
+        document.querySelectorAll('button[onclick="confirmSubmit()"]').forEach(b => {
+          b.disabled = true;
+          b.title = 'Loading…';
+        });
+        try {
+          const cachedTest = sessionStorage.getItem('test_' + id);
+          if (cachedTest) {
+            const t = JSON.parse(cachedTest);
+            if (t && t.title) {
+              document.getElementById('test-title-bar').textContent = t.title;
+              document.title = t.title + ' — IELTS Master';
+              const tl = typeLabel(t.type);
+              const badge = document.getElementById('type-badge');
+              badge.textContent = tl.emoji + ' ' + tl.label;
+              badge.className = `badge ${tl.badge}`;
+            }
+            if (t && t.question_count) {
+              buildAnswerInputs(parseInt(t.question_count) || 13);
+            }
+          }
+          // Also pre-render header from cached profile
+          const cachedProfile = sessionStorage.getItem('_im_profile');
+          if (cachedProfile) {
+            window.__user = JSON.parse(cachedProfile);
+            renderHeader('tests.html');
+          }
+        } catch (_) {}
+
+        // Auth + test fetch run in parallel for maximum speed
         const [usr, testData] = await Promise.all([
           Auth.initUser('student'),
           DB.getTest(id),
         ]);
 
         if (!usr) return; // initUser already redirected
+        user = usr; // assign to module-level variable so submitTest can use it
+        // Re-enable submit buttons now that auth is confirmed
+        document.querySelectorAll('button[onclick="confirmSubmit()"]').forEach(b => {
+          b.disabled = false;
+          b.title = '';
+        });
         renderHeader('tests.html');
 
         test = testData;
@@ -197,19 +235,26 @@
       function setupTest() {
         document.title = test.title + ' — IELTS Master';
         document.getElementById('test-title-bar').textContent = test.title;
-        const isRead = test.type === 'reading';
+        const tl = typeLabel(test.type);
         const badge = document.getElementById('type-badge');
-        badge.textContent = isRead ? '📖 Reading' : '🎧 Listening';
-        badge.className = `badge ${isRead ? 'badge-red' : 'badge-blue'}`;
+        badge.textContent = tl.emoji + ' ' + tl.label;
+        badge.className = `badge ${tl.badge}`;
 
         questionCount = parseInt(test.question_count) || 13;
         if (questionCount === 0) {
           showError('This test has no questions configured. Please contact your teacher.');
           return;
         }
-        buildAnswerInputs(questionCount);
+        // Only rebuild if pre-render didn't already do it with the correct count
+        const existingInputs = document.querySelectorAll('.q-row').length;
+        if (existingInputs !== questionCount) {
+          buildAnswerInputs(questionCount);
+        } else {
+          updateFilledCount();
+        }
         loadContent();
-        totalSeconds = (isRead ? 60 : 40) * 60;
+        // Article tests: 45 min; Reading: 60 min; Listening: 40 min
+        totalSeconds = (test.type === 'reading' ? 60 : test.type === 'article' ? 45 : 40) * 60;
         startTimer();
       }
 
@@ -219,8 +264,14 @@
         const cover  = document.getElementById('iframe-cover');
 
         if (test.mode === 'article') {
-          // Replace the iframe-wrap with a styled article panel
-          iframeWrap.innerHTML = buildArticleHTML(test);
+          // Show shimmer skeleton, then swap in real content on next frame
+          const skRows = [95,88,100,82,91,78].map((w,i)=>
+            `<div style="height:14px;width:${w}%;border-radius:4px;margin-bottom:9px;background:linear-gradient(90deg,#f3f4f6 25%,#e9eaec 50%,#f3f4f6 75%);background-size:400% 100%;animation:_sk 1.4s ${i*0.1}s ease infinite"></div>`
+          ).join('');
+          iframeWrap.innerHTML = `<div class="article-wrap" style="pointer-events:none"><style>@keyframes _sk{0%{background-position:100% 0}100%{background-position:-100% 0}}</style><div style="height:26px;width:70%;border-radius:6px;margin-bottom:20px;background:linear-gradient(90deg,#f3f4f6 25%,#e9eaec 50%,#f3f4f6 75%);background-size:400% 100%;animation:_sk 1.4s ease infinite"></div>${skRows}</div>`;
+          requestAnimationFrame(() => {
+            iframeWrap.innerHTML = buildArticleHTML(test);
+          });
           return;
         }
 
@@ -262,17 +313,37 @@
           : '';
 
         const rawText = t.article_text || '';
-        const paragraphs = rawText
-          .split(/\n\n+/)
-          .map(p => p.trim())
-          .filter(p => p.length > 0)
-          .map(p => `<p>${escapeHTML(p).replace(/\n/g, '<br>')}</p>`)
-          .join('');
+
+        // Detect if content is HTML (starts with < tag) — render as-is inside a safe wrapper
+        const isHTML = /^\s*<[a-zA-Z]/.test(rawText);
+
+        let bodyHTML;
+        if (isHTML) {
+          // Render HTML directly — teacher deliberately used HTML formatting
+          bodyHTML = rawText;
+        } else {
+          // Plain text: split on blank lines for paragraphs, single \n becomes <br>
+          bodyHTML = rawText
+            .split(/\n{2,}/)
+            .map(p => p.trim())
+            .filter(p => p.length > 0)
+            .map(p => {
+              // Apply basic markdown-like formatting
+              let html = escapeHTML(p)
+                .replace(/\n/g, '<br>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/__(.*?)__/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/_(.*?)_/g, '<em>$1</em>');
+              return `<p>${html}</p>`;
+            })
+            .join('');
+        }
 
         return `<div class="article-wrap">
           ${audioBar}
           ${heading}
-          <div class="article-body">${paragraphs}</div>
+          <div class="article-body">${bodyHTML}</div>
         </div>`;
       }
 
@@ -354,6 +425,12 @@
       async function submitTest() {
         clearInterval(timerInterval);
 
+        if (!user) {
+          // Auth hasn't resolved yet — wait for it then retry
+          user = await Auth.currentUser();
+          if (!user) { alert('Session expired. Please log in again.'); window.location.href = '../index.html'; return; }
+        }
+
         const answers = [];
         for (let i = 0; i < questionCount; i++) {
           const el = document.getElementById('ans_' + i);
@@ -406,7 +483,7 @@
         document.getElementById('result-band').textContent = 'Band ' + band;
         document.getElementById('result-band').style.color = color;
         document.getElementById('result-sub').textContent =
-          (test.type === 'reading' ? '📖 Reading' : '🎧 Listening') +
+          (typeLabel(test.type).emoji + ' ' + typeLabel(test.type).label) +
           ' · ' + (savedOk ? '✅ Saved to results' : '⚠️ Save failed');
 
         document.getElementById('result-stats').innerHTML = `

@@ -15,12 +15,31 @@ const Auth = {
   async currentUser() {
     try {
       const { data: { session } } = await _supabase.auth.getSession();
-      if (!session) return null;
+      if (!session) {
+        // Clear stale cache on logout
+        try { sessionStorage.removeItem('_im_profile'); } catch (_) {}
+        return null;
+      }
+
+      // Return cached profile if it belongs to the same user
+      try {
+        const cached = sessionStorage.getItem('_im_profile');
+        if (cached) {
+          const p = JSON.parse(cached);
+          if (p && p.id === session.user.id) return p;
+        }
+      } catch (_) {}
+
+      // Cache miss — fetch from DB and store
       const { data: profile } = await _supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .single();
+
+      if (profile) {
+        try { sessionStorage.setItem('_im_profile', JSON.stringify(profile)); } catch (_) {}
+      }
       return profile || null;
     } catch (e) {
       console.error('currentUser error:', e);
@@ -129,6 +148,7 @@ const Auth = {
   },
 
   async logout() {
+    try { sessionStorage.removeItem('_im_profile'); } catch (_) {}
     await _supabase.auth.signOut();
     window.__user = null;
     window.location.href = '../index.html';

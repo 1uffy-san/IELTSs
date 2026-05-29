@@ -10,6 +10,7 @@
     <script src="../js/auth.js" defer></script>
     <script src="../js/data.js" defer></script>
     <style>
+      .badge-green { background:#d1fae5; color:#065f46; }
       .summary-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -220,6 +221,7 @@
               <option value="all">All Types</option>
               <option value="reading">📖 Reading</option>
               <option value="listening">🎧 Listening</option>
+              <option value="article">📰 Article</option>
             </select>
             <select class="filter-select" id="sort-by" onchange="selectedIdx = null; document.getElementById('detail-panel').classList.remove('open'); renderTable()">
               <option value="date-desc">Newest First</option>
@@ -250,8 +252,9 @@
       });
 
       function renderSummary() {
-        const rCt = results.filter((r) => r.type === "reading").length;
-        const lCt = results.filter((r) => r.type === "listening").length;
+        const rCt  = results.filter((r) => r.type === "reading").length;
+        const lCt  = results.filter((r) => r.type === "listening").length;
+        const aCt  = results.filter((r) => r.type === "article").length;
         const best = results.length
           ? Math.max(...results.map((r) => bandScore(r.score, r.total)))
           : null;
@@ -265,6 +268,7 @@
     <div class="sum-card"><div class="sum-icon">📋</div><div class="sum-num">${results.length}</div><div class="sum-label">Total Tests</div></div>
     <div class="sum-card"><div class="sum-icon">📖</div><div class="sum-num">${rCt}</div><div class="sum-label">Reading Tests</div></div>
     <div class="sum-card"><div class="sum-icon">🎧</div><div class="sum-num">${lCt}</div><div class="sum-label">Listening Tests</div></div>
+    <div class="sum-card"><div class="sum-icon">📰</div><div class="sum-num">${aCt}</div><div class="sum-label">Article Tests</div></div>
     <div class="sum-card"><div class="sum-icon">🏆</div><div class="sum-num" style="color:var(--green)">${best !== null ? "Band " + best : "—"}</div><div class="sum-label">Best Band</div></div>
     <div class="sum-card"><div class="sum-icon">📈</div><div class="sum-num">${avg !== null ? "Band " + avg : "—"}</div><div class="sum-label">Avg Band</div></div>`;
       }
@@ -325,7 +329,7 @@
         const pct = pctScore(r.score, r.total);
         return `<tr class="result-row">
         <td style="font-weight:600">${r.test || r.test_name || "—"}</td>
-        <td><span class="badge ${r.type === "reading" ? "badge-red" : "badge-blue"}">${r.type === "reading" ? "📖 Reading" : "🎧 Listening"}</span></td>
+        <td><span class="badge ${r.type === "reading" ? "badge-red" : r.type === "article" ? "badge-green" : "badge-blue"}">${r.type === "reading" ? "📖 Reading" : r.type === "article" ? "📰 Article" : "🎧 Listening"}</span></td>
         <td>${r.score}/${r.total}</td>
         <td style="font-weight:800;color:${bandColor(pct)}">Band ${band}</td>
         <td><div style="display:flex;align-items:center;gap:8px"><div style="width:60px;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${bandColor(pct)};border-radius:3px"></div></div>${pct}%</div></td>
@@ -393,7 +397,7 @@
     <div class="detail-header">
       <div>
         <div class="detail-title">${r.test || r.test_name || "—"}</div>
-        <div class="detail-meta">${r.type === "reading" ? "📖 Reading" : "🎧 Listening"} · ${r.date}</div>
+        <div class="detail-meta">${r.type === 'reading' ? '📖 Reading' : r.type === 'article' ? '📰 Article' : '🎧 Listening'} · ${r.date}</div>
       </div>
       <div style="text-align:right">
         <div class="detail-score-big" style="color:${bandColor(pct)}">Band ${band}</div>

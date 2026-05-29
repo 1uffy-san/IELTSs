@@ -10,6 +10,7 @@
     <script src="../js/auth.js" defer></script>
     <script src="../js/data.js" defer></script>
     <style>
+      .badge-green { background:#d1fae5; color:#065f46; }
       .back-link { display:inline-flex; align-items:center; gap:6px; font-size:14px; color:var(--muted); text-decoration:none; margin-bottom:20px; font-weight:500; }
       .back-link:hover { color:var(--red); }
       .student-hero { display:flex; align-items:center; gap:18px; background:#fff; border:1.5px solid var(--border); border-radius:14px; padding:24px 28px; margin-bottom:24px; }
@@ -75,6 +76,7 @@
         const avatarHTML = initials;
         const rCt  = results.filter(r => r.type === 'reading').length;
         const lCt  = results.filter(r => r.type === 'listening').length;
+        const aCt  = results.filter(r => r.type === 'article').length;
         const best = results.length ? Math.max(...results.map(r => bandScore(r.score, r.total))) : null;
         const avg  = results.length ? (results.reduce((s,r) => s + bandScore(r.score, r.total), 0) / results.length).toFixed(1) : null;
 
@@ -93,6 +95,7 @@
             <div class="sum-card"><div class="sum-icon">📋</div><div class="sum-num">${results.length}</div><div class="sum-label">Total Tests</div></div>
             <div class="sum-card"><div class="sum-icon">📖</div><div class="sum-num">${rCt}</div><div class="sum-label">Reading</div></div>
             <div class="sum-card"><div class="sum-icon">🎧</div><div class="sum-num">${lCt}</div><div class="sum-label">Listening</div></div>
+            <div class="sum-card"><div class="sum-icon">📰</div><div class="sum-num">${aCt}</div><div class="sum-label">Article</div></div>
             <div class="sum-card"><div class="sum-icon">🏆</div><div class="sum-num" style="color:var(--green)">${best !== null ? 'Band ' + best : '—'}</div><div class="sum-label">Best Band</div></div>
             <div class="sum-card"><div class="sum-icon">📈</div><div class="sum-num">${avg !== null ? 'Band ' + avg : '—'}</div><div class="sum-label">Avg Band</div></div>
           </div>
@@ -148,7 +151,7 @@
             const pct   = pctScore(r.score, r.total);
             return `<tr class="result-row" onclick="toggleDetail(${origIdx})">
               <td style="font-weight:600">${r.test}</td>
-              <td><span class="badge ${r.type === 'reading' ? 'badge-red' : 'badge-blue'}">${r.type === 'reading' ? '📖 Reading' : '🎧 Listening'}</span></td>
+              <td><span class="badge ${r.type === 'reading' ? 'badge-red' : r.type === 'article' ? 'badge-green' : 'badge-blue'}">${r.type === 'reading' ? '📖 Reading' : r.type === 'article' ? '📰 Article' : '🎧 Listening'}</span></td>
               <td>${r.score}/${r.total}</td>
               <td style="font-weight:800;color:${bandColor(pct)}">Band ${band}</td>
               <td><div style="display:flex;align-items:center;gap:8px"><div style="width:60px;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${bandColor(pct)};border-radius:3px"></div></div>${pct}%</div></td>
@@ -209,7 +212,7 @@
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
             <div>
               <div style="font-size:17px;font-weight:700">${r.test}</div>
-              <div style="font-size:13px;color:var(--muted)">${r.type === 'reading' ? '📖 Reading' : '🎧 Listening'} · ${r.date}</div>
+              <div style="font-size:13px;color:var(--muted)">${r.type === 'reading' ? '📖 Reading' : r.type === 'article' ? '📰 Article' : '🎧 Listening'} · ${r.date}</div>
             </div>
             <div style="text-align:right">
               <div style="font-size:42px;font-weight:800;line-height:1;color:${bandColor(pct)}">Band ${band}</div>

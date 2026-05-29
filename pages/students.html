@@ -10,6 +10,7 @@
     <script src="../js/auth.js" defer></script>
     <script src="../js/data.js" defer></script>
     <style>
+      .badge-green { background:#d1fae5; color:#065f46; }
       .search-bar { display:flex; gap:12px; margin-bottom:24px; }
       .search-bar input { flex:1; padding:10px 14px; border:1.5px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; outline:none; transition:.2s; }
       .search-bar input:focus { border-color:var(--red); }
@@ -127,6 +128,7 @@
           const res  = allResults[s.id] || [];
           const rCt  = res.filter(r => r.type === 'reading').length;
           const lCt  = res.filter(r => r.type === 'listening').length;
+          const aCt  = res.filter(r => r.type === 'article').length;
           const best = res.length ? Math.max(...res.map(r => bandScore(r.score, r.total))) : null;
           const initials = s.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
           const avatarHTML = initials;
@@ -142,9 +144,10 @@
               </div>
               <span class="badge badge-gray" style="margin-left:auto">Email</span>
             </div>
-            <div class="sc-stats">
+            <div class="sc-stats" style="grid-template-columns:1fr 1fr 1fr 1fr">
               <div class="sc-stat"><div class="sc-stat-num">${rCt}</div><div class="sc-stat-label">Reading</div></div>
               <div class="sc-stat"><div class="sc-stat-num">${lCt}</div><div class="sc-stat-label">Listening</div></div>
+              <div class="sc-stat"><div class="sc-stat-num">${aCt}</div><div class="sc-stat-label">Article</div></div>
               <div class="sc-stat"><div class="sc-stat-num" style="color:${best ? bandColor(pctScore(best, 9)) : ''}">${best !== null ? 'B' + best : '—'}</div><div class="sc-stat-label">Best Band</div></div>
             </div>
             <div class="sc-footer">
@@ -164,6 +167,7 @@
         const avatarHTML = initials;
         const rCt  = res.filter(r => r.type === 'reading').length;
         const lCt  = res.filter(r => r.type === 'listening').length;
+        const aCt  = res.filter(r => r.type === 'article').length;
         const best = res.length ? Math.max(...res.map(r => bandScore(r.score, r.total))) : null;
 
         document.getElementById('modal-head').innerHTML = `
@@ -179,6 +183,7 @@
             <div class="modal-stat"><div class="modal-stat-num">${res.length}</div><div class="modal-stat-label">Total Tests</div></div>
             <div class="modal-stat"><div class="modal-stat-num">${rCt}</div><div class="modal-stat-label">Reading</div></div>
             <div class="modal-stat"><div class="modal-stat-num">${lCt}</div><div class="modal-stat-label">Listening</div></div>
+            <div class="modal-stat"><div class="modal-stat-num">${aCt}</div><div class="modal-stat-label">Article</div></div>
             <div class="modal-stat"><div class="modal-stat-num" style="color:var(--green)">${best !== null ? 'Band ' + best : '—'}</div><div class="modal-stat-label">Best Band</div></div>
           </div>
           ${res.length === 0
@@ -191,7 +196,7 @@
                   const pct  = pctScore(r.score, r.total);
                   return `<tr>
                     <td style="font-weight:600">${r.test}</td>
-                    <td><span class="badge ${r.type === 'reading' ? 'badge-red' : 'badge-blue'}">${r.type === 'reading' ? '📖 Reading' : '🎧 Listening'}</span></td>
+                    <td><span class="badge ${r.type === 'reading' ? 'badge-red' : r.type === 'article' ? 'badge-green' : 'badge-blue'}">${r.type === 'reading' ? '📖 Reading' : r.type === 'article' ? '📰 Article' : '🎧 Listening'}</span></td>
                     <td>${r.score}/${r.total}</td>
                     <td style="font-weight:700;color:${bandColor(pct)}">Band ${band}</td>
                     <td style="color:var(--muted)">${r.date}</td>

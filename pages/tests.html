@@ -20,6 +20,7 @@
       .tc-icon { width:46px; height:46px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
       .tc-icon.custom-reading { background:#fef0f0; border:2px dashed #fca5a5; }
       .tc-icon.custom-listening { background:#eff6ff; border:2px dashed #93c5fd; }
+      .tc-icon.custom-article { background:#f0fdf4; border:2px dashed #86efac; }
       .tc-title { font-size:15px; font-weight:700; line-height:1.3; margin-bottom:4px; }
       .tc-meta { font-size:12px; color:var(--muted); }
       .tc-divider { height:1px; background:var(--border); margin:0 20px; }
@@ -38,6 +39,7 @@
       <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('reading', this)">📖 Reading</button>
         <button class="tab-btn" onclick="switchTab('listening', this)">🎧 Listening</button>
+        <button class="tab-btn" onclick="switchTab('article', this)">📰 Article</button>
       </div>
 
       <div id="tab-reading">
@@ -63,6 +65,18 @@
           <div style="color:var(--muted);padding:20px">Loading…</div>
         </div>
       </div>
+
+      <div id="tab-article" style="display:none">
+        <div id="article-teacher-section" style="display:none">
+          <div class="section-label">Teacher Article Tests</div>
+          <div class="test-grid" id="article-teacher-grid"></div>
+        </div>
+        <div id="article-empty" style="display:none">
+          <div style="color:var(--muted);padding:20px;font-size:14px">
+            No article tests yet. Ask your teacher to add some.
+          </div>
+        </div>
+      </div>
     </main>
 
     <script>
@@ -79,14 +93,30 @@
           DB.getTestsMeta(),
         ]);
 
-        // Prefetch all test content in background so clicking Start is instant
-        allTests.forEach(t => DB.getTest(t.id));
+        // DO NOT prefetch full test HTML — it can be megabytes per test.
 
         renderTab('reading');
         renderTab('listening');
+        renderTab('article');
       });
 
       function renderTab(type) {
+        if (type === 'article') {
+          const tests = allTests.filter(t => t.type === 'article');
+          const section = document.getElementById('article-teacher-section');
+          const grid    = document.getElementById('article-teacher-grid');
+          const empty   = document.getElementById('article-empty');
+          if (tests.length) {
+            section.style.display = 'block';
+            empty.style.display = 'none';
+            grid.innerHTML = tests.map(t => buildTestCard(t)).join('');
+          } else {
+            section.style.display = 'none';
+            empty.style.display = 'block';
+          }
+          return;
+        }
+
         const tests = allTests.filter(t => t.type === type);
         const teacherSection = document.getElementById(type + '-teacher-section');
         const teacherGrid = document.getElementById(type + '-teacher-grid');
@@ -109,20 +139,20 @@
       }
 
       function buildTestCard(t) {
-        const isRead = t.type === 'reading';
+        const tl = typeLabel(t.type);
         const attempts = myResults.filter(r => (r.test || r.test_name) === t.title);
         const best = attempts.length ? Math.max(...attempts.map(r => bandScore(r.score, r.total))) : null;
         const last = attempts[attempts.length - 1];
 
         return `<div class="test-card">
           <div class="tc-header">
-            <div class="tc-icon custom-${t.type}">${isRead ? '📖' : '🎧'}</div>
+            <div class="tc-icon custom-${t.type === 'article' ? 'reading' : t.type}">${tl.emoji}</div>
             <div>
               <div class="tc-title">${t.title}</div>
               <div class="tc-meta">
-                ${isRead ? '📖 Reading' : '🎧 Listening'} ·
+                <span class="badge ${tl.badge}" style="font-size:11px">${tl.emoji} ${tl.label}</span> ·
                 ${t.question_count || '?'} Questions ·
-                ${t.mode === 'url' ? '🔗 External link' : t.mode === 'article' ? '📰 Article' : '📄 Inline HTML'}
+                ${t.mode === 'url' ? '🔗 External link' : t.mode === 'article' ? '📰 Passage' : '📄 Inline HTML'}
               </div>
             </div>
           </div>
@@ -150,9 +180,10 @@
       function switchTab(tab, btn) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        document.getElementById('tab-reading').style.display = tab === 'reading' ? 'block' : 'none';
+        document.getElementById('tab-reading').style.display   = tab === 'reading'   ? 'block' : 'none';
         document.getElementById('tab-listening').style.display = tab === 'listening' ? 'block' : 'none';
+        document.getElementById('tab-article').style.display   = tab === 'article'   ? 'block' : 'none';
       }
     </script>
-  </body>
+  </body> 
 </html>
